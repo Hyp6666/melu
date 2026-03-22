@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude Code local config
+.claude/
+AGENTS.md
+CLAUDE.md
+
+# Internal planning docs
+docs/plans/
+melu-spec.md
+
+# Melu user data (runtime / local memories)
+*.memory
+
+# npm pack artifacts
+*.tgz
+
+# Debug / temp
+show.html
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.*

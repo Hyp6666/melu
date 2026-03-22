@@ -1,0 +1,49 @@
+{
+  "name": "@hope666/melu",
+  "version": "1.0.2",
+  "description": "Transparent AI memory agent — intercepts LLM API calls, injects persistent memory, extracts new memories automatically.",
+  "type": "module",
+  "bin": {
+    "melu": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js"
+  },
+  "keywords": [
+    "ai",
+    "memory",
+    "agent",
+    "claude",
+    "proxy",
+    "llm"
+  ],
+  "license": "Apache-2.0",
+  "author": "Hong Yupeng",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@inquirer/prompts": "^7.10.1",
+    "better-sqlite3": "^11.0.0",
+    "commander": "^12.0.0",
+    "node-llama-cpp": "^3.18.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "typescript": "^5.5.0"
+  }
+}
