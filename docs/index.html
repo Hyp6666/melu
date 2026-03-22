@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Melu - 让 Claude Code 拥有跨会话记忆</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary-fixed-dim": "#ffb77d",
+              "outline-variant": "#dbc2b0",
+              "on-secondary-fixed-variant": "#3d4756",
+              "surface-container": "#edeeef",
+              "tertiary-fixed": "#cee5ff",
+              "surface-tint": "#904d00",
+              "on-tertiary": "#ffffff",
+              "on-primary": "#ffffff",
+              "secondary-container": "#d6e0f3",
+              "surface": "#f8f9fa",
+              "inverse-on-surface": "#f0f1f2",
+              "error": "#ba1a1a",
+              "inverse-surface": "#2e3132",
+              "on-tertiary-fixed-variant": "#004a75",
+              "on-tertiary-container": "#fdfcff",
+              "on-error": "#ffffff",
+              "on-secondary-container": "#596373",
+              "secondary-fixed": "#d9e3f6",
+              "surface-container-high": "#e7e8e9",
+              "on-secondary-fixed": "#121c2a",
+              "primary": "#8d4b00",
+              "background": "#f8f9fa",
+              "on-primary-fixed-variant": "#6e3900",
+              "on-secondary": "#ffffff",
+              "surface-dim": "#d9dadb",
+              "error-container": "#ffdad6",
+              "tertiary-container": "#007abd",
+              "on-error-container": "#93000a",
+              "secondary-fixed-dim": "#bdc7d9",
+              "surface-variant": "#e1e3e4",
+              "inverse-primary": "#ffb77d",
+              "surface-container-lowest": "#ffffff",
+              "on-background": "#191c1d",
+              "secondary": "#555f6f",
+              "on-surface-variant": "#554336",
+              "on-primary-container": "#fffbff",
+              "primary-fixed": "#ffdcc3",
+              "tertiary": "#006096",
+              "on-tertiary-fixed": "#001d32",
+              "surface-bright": "#f8f9fa",
+              "on-surface": "#191c1d",
+              "primary-container": "#b15f00",
+              "on-primary-fixed": "#2f1500",
+              "surface-container-highest": "#e1e3e4",
+              "outline": "#887364",
+              "surface-container-low": "#f3f4f5",
+              "tertiary-fixed-dim": "#96ccff"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      }
+      .glass-header {
+        background: rgba(248, 249, 250, 0.8);
+        backdrop-filter: blur(24px);
+      }
+      .primary-gradient {
+        background: linear-gradient(135deg, #8d4b00 0%, #b15f00 100%);
+      }
+      #toast {
+        visibility: hidden;
+        min-width: 250px;
+        margin-left: -125px;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 16px;
+        position: fixed;
+        z-index: 100;
+        left: 50%;
+        bottom: 30px;
+      }
+      #toast.show {
+        visibility: visible;
+        -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        animation: fadein 0.5s, fadeout 0.5s 2.5s;
+      }
+      @-webkit-keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+      @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+      @-webkit-keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+      @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+      .nav-link {
+        color: #554336;
+        padding-bottom: 0.25rem;
+        transition: color 300ms ease;
+      }
+      .nav-link:hover {
+        color: #D97706;
+      }
+      .nav-link-active {
+        color: #D97706;
+      }
+      .nav-indicator {
+        position: absolute;
+        bottom: 0;
+        height: 3px;
+        border-radius: 9999px;
+        background: #D97706;
+        transition: transform 320ms ease, width 320ms ease, opacity 200ms ease;
+        opacity: 1;
+      }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<div id="toast">Copied to clipboard</div>
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 glass-header">
+<div class="flex justify-between items-center px-8 py-4 max-w-7xl mx-auto">
+<div class="text-2xl font-bold text-[#191c1d] dark:text-[#f8f9fa] font-headline tracking-tight">Melu</div>
+<div class="hidden md:flex relative items-center gap-8 pb-1 font-headline font-semibold tracking-tight" id="navLinks">
+<a class="nav-link nav-link-active" href="#features">Features</a>
+<a class="nav-link" href="#how-it-works">How it Works</a>
+<a class="nav-link" href="#usage">Usage</a>
+<a class="nav-link" href="#faq">FAQ</a>
+<div aria-hidden="true" class="nav-indicator" id="navIndicator"></div>
+</div>
+<div class="flex items-center gap-4">
+<a class="inline-flex items-center gap-2 text-[#554336] font-semibold hover:text-[#D97706] transition-colors" href="https://github.com/Hyp6666/melu/tree/main" target="_blank" rel="noreferrer">
+<svg aria-hidden="true" class="h-5 w-5 fill-current" viewBox="0 0 24 24">
+<path d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.866-.013-1.699-2.782.605-3.369-1.343-3.369-1.343-.455-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.091-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.53 9.53 0 0 1 2.504.337c1.909-1.296 2.747-1.026 2.747-1.026.546 1.378.203 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.31.678.921.678 1.857 0 1.34-.012 2.421-.012 2.75 0 .268.18.579.688.481A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2Z"></path>
+</svg>
+<span>GitHub</span>
+</a>
+<button class="primary-gradient text-on-primary px-5 py-2 rounded-md font-semibold active:scale-95 transition-transform shadow-sm" onclick="scrollToCTA()">立即开始</button>
+</div>
+</div>
+</nav>
+<!-- Hero Section -->
+<section class="pt-24 pb-12 px-8 max-w-7xl mx-auto text-center">
+<h1 class="text-5xl md:text-7xl font-headline font-extrabold tracking-tight text-on-surface mb-6 leading-[1.1]">
+        让 Claude Code 拥有<br/>
+<span class="text-primary-container">跨会话记忆</span>
+</h1>
+<p class="text-xl text-on-surface-variant leading-relaxed mb-8 max-w-2xl mx-auto">
+        Melu 是一个轻量级的透明代理，旨在解决 Claude Code 每次重启都会“失忆”的问题。它能够自动提取关键上下文并实现语义化检索。
+    </p>
+<div class="flex flex-wrap gap-4 items-center justify-center mb-12">
+<button class="primary-gradient text-on-primary px-8 py-4 rounded-md font-semibold text-lg active:scale-95 transition-transform shadow-lg" id="quickStartBtn">
+            快速开始
+        </button>
+<a class="bg-surface-container-low text-primary px-8 py-4 rounded-md font-semibold text-lg hover:bg-surface-container-high transition-colors inline-block" href="https://github.com/Hyp6666/melu/tree/main">
+            查看 GitHub
+        </a>
+</div>
+<!-- Relocated Terminal Block -->
+<div class="max-w-2xl mx-auto relative">
+<div class="bg-inverse-surface rounded-xl p-6 shadow-2xl font-mono text-sm text-surface-bright overflow-hidden border-l-4 border-primary text-left">
+<div class="flex gap-2 mb-4">
+<div class="w-3 h-3 rounded-full bg-red-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-yellow-500/50"></div>
+<div class="w-3 h-3 rounded-full bg-green-500/50"></div>
+</div>
+<div class="space-y-2">
+<p class="text-on-surface-variant/60"># Install the global package</p>
+<p class="text-primary-fixed-dim">npm install -g @hope666/melu</p>
+<p class="text-on-surface-variant/60 mt-4"># Initialize Melu environment</p>
+<p class="text-primary-fixed-dim">melu init</p>
+<p class="text-on-surface-variant/60 mt-4"># Run Claude Code with memory</p>
+<p class="text-primary-fixed-dim">melu run -- claude</p>
+<div class="mt-6 pt-4 border-t border-white/10">
+<p class="text-tertiary-fixed-dim">✓ Memory bridge established</p>
+<p class="text-tertiary-fixed-dim">✓ Claude Code process started</p>
+</div>
+</div>
+</div>
+<!-- Decorative background blur -->
+<div class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary-container/10 blur-[100px] rounded-full"></div>
+</div>
+</section>
+<!-- Pain Points -->
+<section class="py-16 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-8">
+<div class="mb-12">
+<h2 class="text-3xl font-headline font-bold text-on-surface mb-4">Claude Code 很强，但它默认没有跨会话、跨账号、跨设备的长期记忆能力</h2>
+<div class="w-20 h-1 primary-gradient"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="bg-surface-container-lowest p-8 rounded-md shadow-sm border-l-4 border-outline-variant/30">
+<span class="material-symbols-outlined text-primary text-4xl mb-4">history</span>
+<h3 class="text-xl font-bold mb-4">会话碎片化</h3>
+<p class="text-on-surface-variant leading-relaxed">每次重启 Claude Code，它都会忘记之前的讨论。你需要重复输入背景信息，浪费大量 Token 和时间。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md shadow-sm border-l-4 border-outline-variant/30">
+<span class="material-symbols-outlined text-primary text-4xl mb-4">psychology_alt</span>
+<h3 class="text-xl font-bold mb-4">核心偏好丢失</h3>
+<p class="text-on-surface-variant leading-relaxed">个人信息与偏好等信息细节无法跨会话持久化保留，导致回复不一致，各账号各API无法有效链接个人记忆</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md shadow-sm border-l-4 border-outline-variant/30">
+<span class="material-symbols-outlined text-primary text-4xl mb-4">cloud_off</span>
+<h3 class="text-xl font-bold mb-4">私有化顾虑</h3>
+<p class="text-on-surface-variant leading-relaxed">标准的云端记忆往往不可控，用户需要一个本地化、透明且安全的记忆中间层。</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Solution Diagram -->
+<section class="py-16 bg-surface" id="how-it-works">
+<div class="max-w-7xl mx-auto px-8 text-center">
+<h2 class="text-4xl font-headline font-bold mb-12">Melu 做了什么</h2>
+<div class="flex flex-col md:flex-row justify-between items-center gap-12 relative">
+<!-- Connectors for Desktop -->
+<div class="hidden md:block absolute top-1/2 left-0 w-full h-[2px] bg-outline-variant/20 -z-10"></div>
+<div class="bg-surface-container-lowest border border-outline-variant/15 p-8 rounded-xl shadow-lg w-full max-w-sm">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-primary text-3xl">router</span>
+</div>
+<h4 class="text-xl font-bold mb-2">1. Proxy</h4>
+<p class="text-on-surface-variant text-sm">拦截 Claude Code 与 API 的通信，具有注入历史记忆感知的能力。</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/15 p-8 rounded-xl shadow-lg w-full max-w-sm">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-primary text-3xl">memory</span>
+</div>
+<h4 class="text-xl font-bold mb-2">2. Injection</h4>
+<p class="text-on-surface-variant text-sm">根据当前对话意图，动态从本地向量库检索并注入历史上下文。</p>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/15 p-8 rounded-xl shadow-lg w-full max-w-sm">
+<div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+<span class="material-symbols-outlined text-primary text-3xl">class</span>
+</div>
+<h4 class="text-xl font-bold mb-2">3. Extraction</h4>
+<p class="text-on-surface-variant text-sm">用户发送出Prompt后，自动提取结构化知识并更新长期记忆库。</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Core Features -->
+<section class="py-16 bg-surface-container-low" id="features">
+<div class="max-w-7xl mx-auto px-8">
+<div class="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-8">
+<div>
+<h2 class="text-4xl font-headline font-bold text-on-surface mb-4">核心能力</h2>
+<p class="text-on-surface-variant text-lg">为专业开发者打造的记忆增强引擎</p>
+</div>
+<div class="text-primary font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined">verified</span> 专业级工具集
+                </div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">update</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Long-term Memory</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">支持数周甚至数月前的开发上下文自动检索与召回。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">lan</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Fully Local</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">所有 Embedding 和向量检索均在本地运行，数据不离身。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">visibility</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Transparent Proxy</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">零配置劫持技术，无需修改 Claude Code 源码即可使用。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">auto_awesome</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Auto Extract</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">利用后台 Worker 自动清理无效对话，只保留高价值信息。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">search_check</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Semantic Search</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">基于向量的语义检索，即使描述不同也能找到相关记忆。</p>
+</div>
+<div class="bg-surface-container-lowest p-8 rounded-md transition-all hover:shadow-md group">
+<div class="mb-6 inline-block p-3 rounded-lg bg-surface-container group-hover:bg-primary-container transition-colors">
+<span class="material-symbols-outlined text-primary group-hover:text-white">dynamic_feed</span>
+</div>
+<h4 class="text-lg font-bold mb-3">Graceful Degradation</h4>
+<p class="text-on-surface-variant text-sm leading-relaxed">若记忆提取失败，系统会自动降级到普通代理模式，确保稳定。</p>
+</div>
+</div>
+</div>
+</section>
+<!-- User Profiles -->
+<section class="py-16 bg-surface overflow-hidden">
+<div class="max-w-7xl mx-auto px-8">
+<h2 class="text-3xl font-headline font-bold mb-10 text-center">适合哪些人</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="p-6 rounded-xl bg-surface-container shadow-sm border border-outline-variant/10">
+<p class="text-on-surface font-bold mb-2">重度开发者</p>
+<p class="text-on-surface-variant text-sm">每天使用 Claude Code 处理成百上千行代码，需要持续的上下文一致性。</p>
+</div>
+<div class="p-6 rounded-xl bg-surface-container shadow-sm border border-outline-variant/10">
+<p class="text-on-surface font-bold mb-2">多项目并进者</p>
+<p class="text-on-surface-variant text-sm">在多个仓库间快速切换，希望 AI 能够瞬间记起不同仓库的特定规则。</p>
+</div>
+<div class="p-6 rounded-xl bg-surface-container shadow-sm border border-outline-variant/10">
+<p class="text-on-surface font-bold mb-2">隐私敏感团队</p>
+<p class="text-on-surface-variant text-sm">由于安全合规限制，不希望将所有历史记忆都持久化在第三方云端。</p>
+</div>
+<div class="p-6 rounded-xl bg-surface-container shadow-sm border border-outline-variant/10">
+<p class="text-on-surface font-bold mb-2">效率追求者</p>
+<p class="text-on-surface-variant text-sm">厌倦了通过复制粘贴来同步历史信息，追求极致流畅的 AI 开发体验。</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Usage Examples -->
+<section class="py-16 bg-surface-container-lowest" id="usage">
+<div class="max-w-7xl mx-auto px-8">
+<h2 class="text-4xl font-headline font-bold mb-12 text-center">怎么用</h2>
+<div class="space-y-8">
+<!-- Example 1 -->
+<div class="grid md:grid-cols-2 gap-12 items-center">
+<div class="order-2 md:order-1">
+<div class="bg-inverse-surface rounded-xl p-6 text-surface-bright font-mono text-sm">
+<p class="text-primary-fixed-dim">melu init</p>
+<p class="text-on-surface-variant/40 mt-2"># 初始化配置</p>
+<p class="text-primary-fixed-dim mt-4">melu run -- claude</p>
+<p class="text-on-surface-variant/40 mt-2"># 默认启动</p>
+</div>
+</div>
+<div class="order-1 md:order-2">
+<h3 class="text-2xl font-bold mb-4">快速上手</h3>
+<p class="text-on-surface-variant leading-relaxed">只需两行命令。`init` 会帮你设置好本地的环境变量和代理，`run` 则会自动启动代理服务并拉起 Claude Code 进程。</p>
+</div>
+</div>
+<!-- Example 2 -->
+<div class="grid md:grid-cols-2 gap-12 items-center">
+<div>
+<h3 class="text-2xl font-bold mb-4">多记忆库管理</h3>
+<p class="text-on-surface-variant leading-relaxed">你可以为不同的项目指定不同的记忆库。通过隔离存储，避免不同项目间的代码逻辑发生干扰。</p>
+</div>
+<div>
+<div class="bg-inverse-surface rounded-xl p-6 text-surface-bright font-mono text-sm">
+<p class="text-primary-fixed-dim">melu list</p>
+<p class="text-on-surface-variant/40 mt-2"># 查看所有记忆会话</p>
+<p class="text-primary-fixed-dim mt-4">melu run --db custom-proj</p>
+<p class="text-on-surface-variant/40 mt-2"># 切换项目空间</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust -->
+<section class="py-16 bg-surface">
+<div class="max-w-4xl mx-auto px-8 text-center">
+<span class="material-symbols-outlined text-primary text-6xl mb-6">shield_lock</span>
+<h2 class="text-4xl font-headline font-bold mb-6">为什么它是可信的</h2>
+<p class="text-xl text-on-surface-variant leading-relaxed mb-8">
+                Melu 的设计原则是“透明”。作为一个中间层，它并不存储你的 API Key（它仅通过环境变量传递），也不将你的原始代码上传到除了 Anthropic 以外的任何地方。所有的记忆索引都存储在本地 SQLite 和本地 Embedding 模型中。
+            </p>
+<div class="flex justify-center gap-12">
+<div class="text-center">
+<p class="text-3xl font-bold text-primary">100%</p>
+<p class="text-sm text-on-surface-variant">本地数据</p>
+</div>
+<div class="text-center">
+<p class="text-3xl font-bold text-primary">OSS</p>
+<p class="text-sm text-on-surface-variant">开源透明</p>
+</div>
+<div class="text-center">
+<p class="text-3xl font-bold text-primary">Safe</p>
+<p class="text-sm text-on-surface-variant">隔离运行</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Architecture -->
+<section class="py-16 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-8">
+<h2 class="text-3xl font-headline font-bold mb-12 text-center">工作方式</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+<div class="text-center">
+<h5 class="font-bold text-lg mb-4 text-primary">Embedder Daemon</h5>
+<p class="text-on-surface-variant text-sm">运行于本地的极小模型服务，负责将对话片段转换为向量坐标。</p>
+</div>
+<div class="text-center">
+<h5 class="font-bold text-lg mb-4 text-primary">Proxy</h5>
+<p class="text-on-surface-variant text-sm">基于 Node.js 的高性能 HTTP 拦截器，负责上下文的静默注入。</p>
+</div>
+<div class="text-center">
+<h5 class="font-bold text-lg mb-4 text-primary">Extractor Worker</h5>
+<p class="text-on-surface-variant text-sm">定期对历史记录进行归档和去噪，确保记忆库的精简与高效。</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Requirements -->
+<section class="py-16 bg-surface">
+<div class="max-w-3xl mx-auto px-8">
+<div class="bg-surface-container-lowest p-10 rounded-2xl shadow-xl border border-outline-variant/10">
+<h2 class="text-2xl font-bold mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">list_alt</span> 运行要求
+                </h2>
+<ul class="space-y-6">
+<li class="flex items-start gap-4">
+<div class="w-2 h-2 rounded-full bg-primary mt-2"></div>
+<div>
+<p class="font-semibold">Node.js 20+</p>
+<p class="text-sm text-on-surface-variant">推荐使用最新的 LTS 版本以获得最佳性能。</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<div class="w-2 h-2 rounded-full bg-primary mt-2"></div>
+<div>
+<p class="font-semibold">Claude Code</p>
+<p class="text-sm text-on-surface-variant">需已在全局安装 `@anthropic-ai/claude-code`。</p>
+</div>
+</li>
+<li class="flex items-start gap-4">
+<div class="w-2 h-2 rounded-full bg-primary mt-2"></div>
+<div>
+<p class="font-semibold">600MB 磁盘空间</p>
+<p class="text-sm text-on-surface-variant">主要用于存储本地向量数据库及其索引文件。</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</section>
+<!-- FAQ -->
+<section class="py-16 bg-surface-container-low" id="faq">
+<div class="max-w-4xl mx-auto px-8">
+<h2 class="text-3xl font-headline font-bold mb-10 text-center">常见问题</h2>
+<div class="space-y-4">
+<details class="group bg-surface-container-lowest rounded-lg">
+<summary class="flex justify-between items-center p-6 cursor-pointer font-bold list-none">
+                        Melu 会导致 Claude Code 的回复变慢吗？
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-6 pt-0 text-on-surface-variant leading-relaxed border-t border-outline-variant/10 mt-2">
+                        会有非常轻微的额外延迟，通常只有几十毫秒，主要来自本地记忆检索。但在正常使用中，这种延迟基本不会影响你的体验。
+                    </div>
+</details>
+<details class="group bg-surface-container-lowest rounded-lg">
+<summary class="flex justify-between items-center p-6 cursor-pointer font-bold list-none">
+                        它可以和现有的 `.claude` 配置共存吗？
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-6 pt-0 text-on-surface-variant leading-relaxed border-t border-outline-variant/10 mt-2">
+                        可以。Melu 作为代理层工作，不会干扰 Claude Code 读取自己在 `.claude` 目录下的配置。
+                    </div>
+</details>
+<details class="group bg-surface-container-lowest rounded-lg">
+<summary class="flex justify-between items-center p-6 cursor-pointer font-bold list-none">
+                        如果我更换了电脑，记忆可以同步吗？
+                        <span class="material-symbols-outlined group-open:rotate-180 transition-transform">expand_more</span>
+</summary>
+<div class="p-6 pt-0 text-on-surface-variant leading-relaxed border-t border-outline-variant/10 mt-2">
+                        目前记忆文件存储在本地的 `~/.melu` 目录下。你可以手动备份该目录，或者将其放置在 iCloud/Dropbox 等同步盘中进行跨设备共享。
+                    </div>
+</details>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-24 bg-surface text-center">
+<div class="max-w-3xl mx-auto px-8">
+<h2 class="text-5xl font-headline font-extrabold mb-6 tracking-tight">准备好升级你的 AI 开发体验了吗？</h2>
+<p class="text-xl text-on-surface-variant mb-10">立刻让你的 Claude Code 拥有近乎无限的记忆。</p>
+<div class="flex flex-wrap justify-center gap-6">
+<button class="primary-gradient text-on-primary px-10 py-5 rounded-md font-bold text-xl shadow-xl hover:scale-105 transition-transform" onclick="document.getElementById('quickStartBtn').click()">
+                    开始使用 Melu
+                </button>
+<a class="bg-surface-container-high text-on-surface px-10 py-5 rounded-md font-bold text-xl hover:bg-surface-dim transition-colors inline-block" href="https://github.com/Hyp6666/melu/tree/main">
+                    查看 GitHub
+                </a>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="bg-surface-container-low border-t border-outline-variant/15">
+<div class="flex flex-col md:flex-row justify-between items-center px-8 py-10 max-w-7xl mx-auto font-body text-sm leading-relaxed">
+<div class="mb-6 md:mb-0">
+<div class="text-lg font-bold text-[#191c1d] dark:text-[#f8f9fa] mb-2">Melu</div>
+<p class="text-[#554336] dark:text-[#e1e3e4]"><span>© 2026 Melu contributors. Licensed under Apache-2.0.</span></p>
+</div>
+<a class="inline-flex items-center gap-3 text-[#554336] dark:text-[#e1e3e4] hover:text-[#D97706] transition-colors" href="https://github.com/Hyp6666/melu" target="_blank" rel="noreferrer">
+<svg aria-hidden="true" class="h-5 w-5 fill-current" viewBox="0 0 24 24">
+<path d="M12 2C6.477 2 2 6.486 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.866-.013-1.699-2.782.605-3.369-1.343-3.369-1.343-.455-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.071 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.091-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844a9.53 9.53 0 0 1 2.504.337c1.909-1.296 2.747-1.026 2.747-1.026.546 1.378.203 2.397.1 2.65.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.31.678.921.678 1.857 0 1.34-.012 2.421-.012 2.75 0 .268.18.579.688.481A10.02 10.02 0 0 0 22 12.017C22 6.486 17.523 2 12 2Z"></path>
+</svg>
+<span class="font-semibold">GitHub</span>
+</a>
+</div>
+</footer>
+<script>
+  const topNav = document.querySelector('nav');
+  const navLinksContainer = document.getElementById('navLinks');
+  const navIndicator = document.getElementById('navIndicator');
+  const navLinks = navLinksContainer ? Array.from(navLinksContainer.querySelectorAll('a[href^="#"]')) : [];
+  const navItems = navLinks
+    .map((link) => {
+      const target = document.querySelector(link.getAttribute('href'));
+      return target ? { link, target } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.target.offsetTop - b.target.offsetTop);
+
+  function moveNavIndicator(link) {
+    if (!navLinksContainer || !navIndicator || !link) {
+      return;
+    }
+
+    navIndicator.style.width = `${link.offsetWidth}px`;
+    navIndicator.style.transform = `translateX(${link.offsetLeft}px)`;
+  }
+
+  function setActiveNavLink(link) {
+    if (!link) {
+      return;
+    }
+
+    navLinks.forEach((item) => {
+      item.classList.toggle('nav-link-active', item === link);
+    });
+    moveNavIndicator(link);
+  }
+
+  function getActiveSectionLink() {
+    const navHeight = topNav ? topNav.offsetHeight : 0;
+    const scrollY = window.scrollY + navHeight + 32;
+    let activeLink = navLinks[0] || null;
+
+    navItems.forEach((item) => {
+      if (item.target.offsetTop <= scrollY) {
+        activeLink = item.link;
+      }
+    });
+
+    return activeLink;
+  }
+
+  function syncNavWithScroll() {
+    setActiveNavLink(getActiveSectionLink());
+  }
+
+  navLinks.forEach((link) => {
+    link.addEventListener('click', (event) => {
+      const target = document.querySelector(link.getAttribute('href'));
+      if (!target) {
+        return;
+      }
+
+      event.preventDefault();
+      setActiveNavLink(link);
+
+      const navHeight = topNav ? topNav.offsetHeight : 0;
+      const targetTop = window.scrollY + target.getBoundingClientRect().top - navHeight - 24;
+      window.scrollTo({
+        top: targetTop,
+        behavior: 'smooth'
+      });
+
+      history.replaceState(null, '', link.getAttribute('href'));
+    });
+  });
+
+  window.addEventListener('scroll', syncNavWithScroll, { passive: true });
+  window.addEventListener('resize', syncNavWithScroll);
+  window.addEventListener('load', syncNavWithScroll);
+
+  document.getElementById('quickStartBtn').addEventListener('click', function() {
+    const command = 'npm install -g @hope666/melu';
+    navigator.clipboard.writeText(command).then(() => {
+      const toast = document.getElementById("toast");
+      toast.className = "show";
+      setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+    });
+  });
+
+  function scrollToCTA() {
+    window.scrollTo({
+      top: document.body.scrollHeight,
+      behavior: 'smooth'
+    });
+  }
+</script>
+</body></html>
