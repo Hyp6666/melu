@@ -25,7 +25,7 @@ melu run -- claude
 
 就这么简单。现在你可以像往常一样使用 Claude Code——唯一的区别是，Melu 在后台默默工作，帮助 Claude 在不同会话之间记住你。
 
-> **API key 和 OAuth 登录均可使用。** 无论你是通过 API key 还是 OAuth（免费/Pro 计划）认证 Claude Code，Melu 都能正常工作。经过验证，搭配 [Claude Code Switch](https://github.com/mfukuoka/claude-code-switch) 多账号切换工具使用，记忆提取也能正常运行。
+> **API key 和 OAuth 登录均可使用。** 无论你是通过 API key 还是 OAuth（免费/Pro 计划）认证 Claude Code，Melu 都能正常工作。经过验证，搭配 [cc-switch](https://github.com/farion1231/cc-switch) 多账号切换工具使用，记忆提取也能正常运行。
 
 ### 查看记忆
 

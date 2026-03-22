@@ -25,7 +25,7 @@ melu run -- claude
 
 That's it. You can now use Claude Code as usual — the only difference is that Melu is quietly working in the background, helping Claude remember you across sessions.
 
-> **Works with both API key and OAuth login.** Whether you authenticate Claude Code with an API key or via OAuth (free/Pro plan), Melu works seamlessly. It has also been tested with [Claude Code Switch](https://github.com/mfukuoka/claude-code-switch) for multi-account setups — memory extraction works correctly across account switches.
+> **Works with both API key and OAuth login.** Whether you authenticate Claude Code with an API key or via OAuth (free/Pro plan), Melu works seamlessly. It has also been tested with [cc-switch](https://github.com/farion1231/cc-switch) for multi-account setups — memory extraction works correctly across account switches.
 
 ### Check Your Memories
 
