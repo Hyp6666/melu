@@ -43,6 +43,11 @@ interface ProxyTraceRequestContext {
   requestBytes: number;
 }
 
+interface ResponseUsageSummary {
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 16);
 }
@@ -160,6 +165,8 @@ function recordTraceEvent(
     status: number;
     responseBytes: number;
     durationMs: number;
+    inputTokens: number;
+    outputTokens: number;
     note: string;
   }> = {},
 ): void {
@@ -178,6 +185,77 @@ function recordTraceEvent(
     requestBytes: ctx.requestBytes,
     ...extra,
   });
+}
+
+function readUsageObject(value: unknown): ResponseUsageSummary {
+  if (!value || typeof value !== "object") return {};
+  const usage = value as Record<string, unknown>;
+  const inputTokens = typeof usage.input_tokens === "number" ? usage.input_tokens : undefined;
+  const outputTokens = typeof usage.output_tokens === "number" ? usage.output_tokens : undefined;
+  return { inputTokens, outputTokens };
+}
+
+function mergeUsage(target: ResponseUsageSummary, next: ResponseUsageSummary): void {
+  if (typeof next.inputTokens === "number") target.inputTokens = next.inputTokens;
+  if (typeof next.outputTokens === "number") target.outputTokens = next.outputTokens;
+}
+
+function extractUsageFromMessageJson(payload: unknown): ResponseUsageSummary {
+  if (!payload || typeof payload !== "object") return {};
+  const record = payload as Record<string, unknown>;
+  if ("usage" in record) {
+    return readUsageObject(record.usage);
+  }
+  return {};
+}
+
+function applyUsageFromSsePayload(target: ResponseUsageSummary, payload: unknown): void {
+  if (!payload || typeof payload !== "object") return;
+  const record = payload as Record<string, unknown>;
+
+  if ("usage" in record) {
+    mergeUsage(target, readUsageObject(record.usage));
+  }
+
+  if (record.type === "message_start" && record.message && typeof record.message === "object") {
+    const message = record.message as Record<string, unknown>;
+    if ("usage" in message) {
+      mergeUsage(target, readUsageObject(message.usage));
+    }
+  }
+
+  if (record.delta && typeof record.delta === "object") {
+    const delta = record.delta as Record<string, unknown>;
+    if ("usage" in delta) {
+      mergeUsage(target, readUsageObject(delta.usage));
+    }
+  }
+}
+
+function consumeSseUsage(buffer: string, usage: ResponseUsageSummary): string {
+  let remaining = buffer;
+  while (true) {
+    const boundary = remaining.indexOf("\n\n");
+    if (boundary === -1) break;
+    const rawEvent = remaining.slice(0, boundary);
+    remaining = remaining.slice(boundary + 2);
+
+    const dataLines = rawEvent
+      .split(/\r?\n/)
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice(5).trimStart());
+
+    if (!dataLines.length) continue;
+    const dataText = dataLines.join("\n");
+    if (dataText === "[DONE]") continue;
+
+    try {
+      applyUsageFromSsePayload(usage, JSON.parse(dataText));
+    } catch {
+      // ignore non-JSON SSE payloads
+    }
+  }
+  return remaining;
 }
 
 function writeJsonResponse(res: ServerResponse, status: number, payload: unknown): void {
@@ -339,7 +417,19 @@ async function handleNormal(
     ));
 
     let responseBytes = 0;
-    if (resp.body) {
+    let usage: ResponseUsageSummary = {};
+    const contentType = resp.headers.get("content-type")?.toLowerCase() ?? "";
+
+    if (traceContext && contentType.includes("application/json")) {
+      const buffer = Buffer.from(await resp.arrayBuffer());
+      responseBytes = buffer.byteLength;
+      try {
+        usage = extractUsageFromMessageJson(JSON.parse(buffer.toString("utf-8")));
+      } catch {
+        usage = {};
+      }
+      res.end(buffer);
+    } else if (resp.body) {
       const reader = resp.body.getReader();
       const pump = async () => {
         while (true) {
@@ -361,6 +451,7 @@ async function handleNormal(
         status: resp.status,
         responseBytes,
         durationMs: Date.now() - traceContext.startedAt,
+        ...usage,
       });
     }
     return resp.ok;
@@ -404,15 +495,22 @@ async function handleStreaming(
     });
 
     let responseBytes = 0;
+    const usage: ResponseUsageSummary = {};
     if (resp.body) {
       const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         responseBytes += value.byteLength;
+        sseBuffer += decoder.decode(value, { stream: true });
+        sseBuffer = consumeSseUsage(sseBuffer, usage);
         res.write(value);
       }
+      sseBuffer += decoder.decode();
+      consumeSseUsage(sseBuffer, usage);
     }
 
     res.end();
@@ -421,6 +519,7 @@ async function handleStreaming(
         status: resp.status,
         responseBytes,
         durationMs: Date.now() - traceContext.startedAt,
+        ...usage,
       });
     }
     return resp.ok;

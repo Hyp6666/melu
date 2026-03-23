@@ -21,6 +21,8 @@ export interface ProxyTraceEvent {
   status?: number;
   responseBytes?: number;
   durationMs?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   note?: string;
 }
 
@@ -66,6 +68,7 @@ interface DashboardCopy {
   tableModel: string;
   tableStream: string;
   tableStatus: string;
+  tableUsage: string;
   tableDuration: string;
   tableBytes: string;
   emptyTitle: string;
@@ -100,6 +103,9 @@ interface DashboardCopy {
   noteLabel: string;
   requestBytesLabel: string;
   responseBytesLabel: string;
+  inputTokensLabel: string;
+  outputTokensLabel: string;
+  usageLabel: string;
   eventTypeLabel: string;
   timestampLabel: string;
   mainAgent: string;
@@ -126,6 +132,9 @@ interface DashboardCopy {
   actionRefresh: string;
   actionSettings: string;
   actionAlerts: string;
+  disconnectedStatus: string;
+  offlineSnapshot: string;
+  timelineLegend: string;
 }
 
 const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
@@ -134,7 +143,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     brand: "Melu Editorial",
     edition: "Observability v1",
     navOverview: "Overview",
-    navTerminals: "Terminals",
+    navTerminals: "Details",
     navAgentTree: "Agent Tree",
     navSettings: "Settings",
     navHelp: "Help",
@@ -171,6 +180,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     tableModel: "Model",
     tableStream: "Stream",
     tableStatus: "Status",
+    tableUsage: "Usage",
     tableDuration: "Duration",
     tableBytes: "Bytes",
     emptyTitle: "No traffic detected yet.",
@@ -205,6 +215,9 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     noteLabel: "Note",
     requestBytesLabel: "Request Bytes",
     responseBytesLabel: "Response Bytes",
+    inputTokensLabel: "Input Tokens",
+    outputTokensLabel: "Output Tokens",
+    usageLabel: "Usage",
     eventTypeLabel: "Event Type",
     timestampLabel: "Timestamp",
     mainAgent: "Main",
@@ -231,13 +244,16 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     actionRefresh: "Refresh",
     actionSettings: "Settings",
     actionAlerts: "Alerts",
+    disconnectedStatus: "Disconnected",
+    offlineSnapshot: "Offline snapshot",
+    timelineLegend: "Height = request duration (seconds, scaled relatively) · Color = model",
   },
   "zh-CN": {
     pageTitle: "Melu Trace",
     brand: "Melu 观察台",
     edition: "Observability v1",
     navOverview: "总览",
-    navTerminals: "终端",
+    navTerminals: "细节",
     navAgentTree: "代理树",
     navSettings: "设置",
     navHelp: "帮助",
@@ -274,6 +290,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     tableModel: "模型",
     tableStream: "流式",
     tableStatus: "状态",
+    tableUsage: "用量",
     tableDuration: "耗时",
     tableBytes: "字节",
     emptyTitle: "还没有检测到流量。",
@@ -308,6 +325,9 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     noteLabel: "备注",
     requestBytesLabel: "请求字节",
     responseBytesLabel: "响应字节",
+    inputTokensLabel: "输入 Tokens",
+    outputTokensLabel: "输出 Tokens",
+    usageLabel: "用量",
     eventTypeLabel: "事件类型",
     timestampLabel: "时间",
     mainAgent: "主代理",
@@ -334,6 +354,9 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     actionRefresh: "刷新",
     actionSettings: "设置",
     actionAlerts: "提醒",
+    disconnectedStatus: "已断开",
+    offlineSnapshot: "离线快照",
+    timelineLegend: "柱高 = 请求耗时（按秒相对缩放） · 颜色 = 模型",
   },
 };
 
@@ -414,6 +437,12 @@ export function buildProxyTraceDashboardHtml(
       --success-soft: rgba(22, 101, 52, 0.1);
       --error: #9d1f1f;
       --error-soft: rgba(157, 31, 31, 0.1);
+      --haiku: #2ca56a;
+      --haiku-soft: rgba(44, 165, 106, 0.18);
+      --sonnet: #bbc91d;
+      --sonnet-soft: rgba(187, 201, 29, 0.2);
+      --opus: #ff8a1e;
+      --opus-soft: rgba(255, 138, 30, 0.2);
       --shadow: 0 24px 60px rgba(47, 37, 28, 0.08);
       --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
       --sans: "Avenir Next", "Segoe UI", sans-serif;
@@ -545,8 +574,8 @@ export function buildProxyTraceDashboardHtml(
     .topbar-left {
       min-width: 0;
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      align-items: baseline;
+      gap: 14px;
     }
 
     .topbar-brand {
@@ -557,14 +586,19 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .topbar-meta {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
       color: var(--muted);
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.16em;
+      font-size: 12px;
+      line-height: 1.4;
+      letter-spacing: 0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .topbar-tagline {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
     }
 
     .topbar-actions {
@@ -608,33 +642,6 @@ export function buildProxyTraceDashboardHtml(
 
     .main-section {
       scroll-margin-top: 24px;
-    }
-
-    .hero {
-      display: flex;
-      justify-content: space-between;
-      gap: 24px;
-      align-items: end;
-    }
-
-    .hero-copy {
-      max-width: 760px;
-    }
-
-    .hero-title {
-      margin: 0;
-      font-family: var(--serif);
-      font-size: clamp(42px, 5vw, 72px);
-      line-height: 0.95;
-      letter-spacing: -0.045em;
-      font-weight: 600;
-    }
-
-    .hero-subtitle {
-      margin: 12px 0 0;
-      color: var(--muted);
-      font-size: 15px;
-      line-height: 1.7;
     }
 
     .warning-banner {
@@ -747,12 +754,12 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .empty-view,
-    .overview-view {
+    .page-view {
       display: none;
     }
 
     .empty-view.is-visible,
-    .overview-view.is-visible {
+    .page-view.is-visible {
       display: grid;
     }
 
@@ -842,7 +849,7 @@ export function buildProxyTraceDashboardHtml(
       letter-spacing: 0.15em;
     }
 
-    .overview-view {
+    .page-view {
       gap: 24px;
     }
 
@@ -1059,6 +1066,7 @@ export function buildProxyTraceDashboardHtml(
     .request-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       min-width: 980px;
     }
 
@@ -1077,7 +1085,7 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .request-table tbody td {
-      padding: 18px 20px;
+      padding: 16px 18px;
       border-bottom: 1px solid var(--line-soft);
       font-size: 12px;
       vertical-align: middle;
@@ -1111,21 +1119,21 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .badge.success {
-      background: var(--success-soft);
+      background: rgba(22, 101, 52, 0.16);
       color: var(--success);
-      border-color: rgba(22, 101, 52, 0.12);
+      border-color: rgba(22, 101, 52, 0.18);
     }
 
     .badge.error {
-      background: var(--error-soft);
+      background: rgba(157, 31, 31, 0.16);
       color: var(--error);
-      border-color: rgba(157, 31, 31, 0.12);
+      border-color: rgba(157, 31, 31, 0.18);
     }
 
     .badge.in-flight {
-      background: var(--secondary-soft);
+      background: rgba(115, 92, 0, 0.16);
       color: var(--secondary);
-      border-color: rgba(115, 92, 0, 0.12);
+      border-color: rgba(115, 92, 0, 0.18);
     }
 
     .type-chip {
@@ -1134,6 +1142,91 @@ export function buildProxyTraceDashboardHtml(
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.16em;
+    }
+
+    .model-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 100%;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .model-chip::before {
+      content: "";
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: currentColor;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.04);
+      flex: none;
+    }
+
+    .model-chip.haiku {
+      background: var(--haiku-soft);
+      color: var(--haiku);
+      border-color: rgba(44, 165, 106, 0.22);
+    }
+
+    .model-chip.sonnet {
+      background: var(--sonnet-soft);
+      color: #7f8600;
+      border-color: rgba(187, 201, 29, 0.26);
+    }
+
+    .model-chip.opus {
+      background: var(--opus-soft);
+      color: #bf5b00;
+      border-color: rgba(255, 138, 30, 0.28);
+    }
+
+    .model-chip.generic {
+      background: rgba(23, 23, 23, 0.06);
+      color: var(--muted);
+      border-color: rgba(23, 23, 23, 0.08);
+    }
+
+    .timeline-bar.haiku {
+      background: linear-gradient(180deg, rgba(44, 165, 106, 0.96), rgba(44, 165, 106, 0.16));
+      box-shadow: inset 0 0 0 1px rgba(44, 165, 106, 0.16);
+    }
+
+    .timeline-bar.sonnet {
+      background: linear-gradient(180deg, rgba(187, 201, 29, 0.96), rgba(187, 201, 29, 0.18));
+      box-shadow: inset 0 0 0 1px rgba(187, 201, 29, 0.2);
+    }
+
+    .timeline-bar.opus {
+      background: linear-gradient(180deg, rgba(255, 138, 30, 0.98), rgba(255, 138, 30, 0.18));
+      box-shadow: inset 0 0 0 1px rgba(255, 138, 30, 0.22);
+    }
+
+    .timeline-bar.generic {
+      background: linear-gradient(180deg, rgba(83, 42, 168, 0.92), rgba(83, 42, 168, 0.16));
+      box-shadow: inset 0 0 0 1px rgba(83, 42, 168, 0.1);
+    }
+
+    .timeline-bar.is-error {
+      outline: 2px solid rgba(157, 31, 31, 0.45);
+      outline-offset: 2px;
+    }
+
+    .timeline-bar.is-in-flight {
+      opacity: 0.88;
+      animation: pulse-track 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse-track {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
     }
 
     .seq-stack {
@@ -1445,9 +1538,8 @@ export function buildProxyTraceDashboardHtml(
       </div>
 
       <div class="nav-group">
-        <a class="nav-item active" href="#overview-section" data-target="overview-section"><span class="nav-mark"></span>${copy.navOverview}</a>
-        <a class="nav-item" href="#requests-section" data-target="requests-section"><span class="nav-mark"></span>${copy.navTerminals}</a>
-        <a class="nav-item" href="#future-section" data-target="future-section"><span class="nav-mark"></span>${copy.navAgentTree}</a>
+        <a class="nav-item active" href="#" data-view="overview"><span class="nav-mark"></span>${copy.navOverview}</a>
+        <a class="nav-item" href="#" data-view="details"><span class="nav-mark"></span>${copy.navTerminals}</a>
       </div>
 
       <div class="nav-group" style="margin-top:auto;">
@@ -1460,7 +1552,7 @@ export function buildProxyTraceDashboardHtml(
       <div class="topbar-left">
         <div class="topbar-brand">${copy.brand}</div>
         <div class="topbar-meta">
-          <span>${copy.edition}</span>
+          <span class="topbar-tagline">- ${copy.headline}</span>
         </div>
       </div>
       <div class="topbar-actions">
@@ -1472,17 +1564,6 @@ export function buildProxyTraceDashboardHtml(
 
     <main class="main">
       <div class="main-inner">
-        <section id="overview-section" class="hero main-section">
-          <div class="hero-copy">
-            <h1 class="hero-title">${copy.headline}</h1>
-            <p class="hero-subtitle">${copy.subtitle}</p>
-          </div>
-          <div id="traffic-warning" class="warning-banner">
-            <span class="warning-dot"></span>
-            <span>${copy.highTrafficWarning}</span>
-          </div>
-        </section>
-
         <section class="session-strip">
           <div class="session-cell">
             <span class="session-label">${copy.runLabel}</span>
@@ -1506,6 +1587,11 @@ export function buildProxyTraceDashboardHtml(
           </div>
         </section>
 
+        <div id="traffic-warning" class="warning-banner">
+          <span class="warning-dot"></span>
+          <span>${copy.highTrafficWarning}</span>
+        </div>
+
         <section id="empty-state" class="empty-view">
           <div class="empty-panel">
             <div class="empty-illustration">
@@ -1518,8 +1604,8 @@ export function buildProxyTraceDashboardHtml(
           </div>
         </section>
 
-        <section id="overview-state" class="overview-view">
-          <section id="overview" class="metric-grid">
+        <section id="overview-state" class="page-view is-visible">
+          <section class="metric-grid">
             <article class="metric-card">
               <div class="metric-label-row">
                 <span class="metric-label">${copy.totalRequests}</span>
@@ -1566,11 +1652,13 @@ export function buildProxyTraceDashboardHtml(
           <section class="panel">
             <div class="panel-head">
               <span class="panel-title">${copy.timelineTitle}</span>
-              <span id="timeline-meta" class="panel-meta">${copy.timelineRange}</span>
+              <span id="timeline-meta" class="panel-meta">${copy.timelineLegend}</span>
             </div>
             <div id="timeline-bars" class="timeline-body"></div>
           </section>
+        </section>
 
+        <section id="details-state" class="page-view">
           <section class="controls">
             <div class="filter-group" id="filter-group">
               <button class="filter-button active" data-filter="all">${copy.filterAll}</button>
@@ -1583,9 +1671,19 @@ export function buildProxyTraceDashboardHtml(
             </label>
           </section>
 
-          <section class="panel main-section" id="requests-section">
+          <section class="panel">
             <div class="request-table-wrap">
               <table class="request-table">
+                <colgroup>
+                  <col style="width:12%" />
+                  <col style="width:9%" />
+                  <col style="width:16%" />
+                  <col style="width:24%" />
+                  <col style="width:10%" />
+                  <col style="width:10%" />
+                  <col style="width:9%" />
+                  <col style="width:10%" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>${copy.tableSeq}</th>
@@ -1594,25 +1692,12 @@ export function buildProxyTraceDashboardHtml(
                     <th>${copy.tableModel}</th>
                     <th>${copy.tableStream}</th>
                     <th>${copy.tableStatus}</th>
+                    <th>${copy.tableUsage}</th>
                     <th>${copy.tableDuration}</th>
                   </tr>
                 </thead>
                 <tbody id="request-table-body"></tbody>
               </table>
-            </div>
-          </section>
-
-          <section class="panel main-section" id="future-section">
-            <div class="panel-head">
-              <span class="panel-title">${copy.systemAnalysis}</span>
-              <span class="panel-meta">${copy.reservedFuture}</span>
-            </div>
-            <div style="padding:22px;">
-              <div class="reserved-list">
-                <div class="reserved-item"><span>${copy.reservedMemoryInjection}</span><span>${copy.reservedFuture}</span></div>
-                <div class="reserved-item"><span>${copy.reservedAgentLineage}</span><span>${copy.reservedFuture}</span></div>
-                <div class="reserved-item"><span>${copy.reservedPromptDetails}</span><span>${copy.reservedFuture}</span></div>
-              </div>
             </div>
           </section>
         </section>
@@ -1657,6 +1742,9 @@ export function buildProxyTraceDashboardHtml(
           <div class="transport-row"><span class="transport-label">${copy.endpointPathLabel}</span><span id="drawer-path" class="transport-value mono"></span></div>
           <div class="transport-row"><span class="transport-label">${copy.statusCodeLabel}</span><span id="drawer-status" class="transport-value mono"></span></div>
           <div class="transport-row"><span class="transport-label">${copy.modelLabel}</span><span id="drawer-model" class="transport-value"></span></div>
+          <div class="transport-row"><span class="transport-label">${copy.usageLabel}</span><span id="drawer-usage" class="transport-value mono"></span></div>
+          <div class="transport-row"><span class="transport-label">${copy.inputTokensLabel}</span><span id="drawer-input-tokens" class="transport-value mono"></span></div>
+          <div class="transport-row"><span class="transport-label">${copy.outputTokensLabel}</span><span id="drawer-output-tokens" class="transport-value mono"></span></div>
           <div class="transport-row"><span class="transport-label">${copy.requestBytesLabel}</span><span id="drawer-request-bytes" class="transport-value mono"></span></div>
           <div class="transport-row"><span class="transport-label">${copy.responseBytesLabel}</span><span id="drawer-response-bytes" class="transport-value mono"></span></div>
           <div class="transport-row"><span class="transport-label">${copy.eventTypeLabel}</span><span id="drawer-event-type" class="transport-value"></span></div>
@@ -1705,6 +1793,7 @@ export function buildProxyTraceDashboardHtml(
       emptyBody: document.getElementById("empty-body"),
       emptyTracePath: document.getElementById("empty-trace-path"),
       overviewState: document.getElementById("overview-state"),
+      detailsState: document.getElementById("details-state"),
       cardTotal: document.getElementById("card-total"),
       cardUp: document.getElementById("card-up"),
       cardDown: document.getElementById("card-down"),
@@ -1734,6 +1823,9 @@ export function buildProxyTraceDashboardHtml(
       drawerPath: document.getElementById("drawer-path"),
       drawerStatus: document.getElementById("drawer-status"),
       drawerModel: document.getElementById("drawer-model"),
+      drawerUsage: document.getElementById("drawer-usage"),
+      drawerInputTokens: document.getElementById("drawer-input-tokens"),
+      drawerOutputTokens: document.getElementById("drawer-output-tokens"),
       drawerRequestBytes: document.getElementById("drawer-request-bytes"),
       drawerResponseBytes: document.getElementById("drawer-response-bytes"),
       drawerEventType: document.getElementById("drawer-event-type"),
@@ -1741,13 +1833,17 @@ export function buildProxyTraceDashboardHtml(
       refreshButton: document.getElementById("refresh-button"),
       searchInput: document.getElementById("search-input"),
       filterButtons: Array.from(document.querySelectorAll(".filter-button")),
-      navItems: Array.from(document.querySelectorAll(".nav-item[data-target]"))
+      navItems: Array.from(document.querySelectorAll(".nav-item[data-view]"))
     };
 
     let lastRenderSignature = "";
     let activeFilter = "all";
     let searchTerm = "";
     let selectedRequestId = null;
+    let currentView = "overview";
+    let isOffline = false;
+    let lastSuccessfulRefreshAt = null;
+    const snapshotStorageKey = "melu-trace-snapshot:" + runId;
     let latestState = {
       events: [],
       requests: [],
@@ -1792,15 +1888,14 @@ export function buildProxyTraceDashboardHtml(
 
     function formatDuration(value) {
       if (typeof value !== "number" || Number.isNaN(value)) return "--";
-      if (value < 1000) return Math.round(value) + " ms";
-      if (value < 60000) return (value / 1000).toFixed(1) + " s";
-      return (value / 60000).toFixed(1) + " m";
-    }
-
-    function formatLatencyCompact(value) {
-      if (typeof value !== "number" || Number.isNaN(value)) return "--";
-      if (value < 1000) return Math.round(value) + "ms";
-      return (value / 1000).toFixed(1) + "s";
+      const totalSeconds = Math.max(0, Math.round(value / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      if (hours > 0) {
+        return String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+      }
+      return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
     }
 
     function compactRunId(value) {
@@ -1815,6 +1910,50 @@ export function buildProxyTraceDashboardHtml(
       const parts = String(value).split("-");
       if (parts.length >= 2) return parts.slice(-2).join("-");
       return String(value).slice(-14);
+    }
+
+    function formatTokenCount(value) {
+      if (typeof value !== "number" || Number.isNaN(value)) return "--";
+      return value.toLocaleString("en-US");
+    }
+
+    function modelTone(model) {
+      const lower = String(model || "").toLowerCase();
+      if (lower.includes("haiku")) return "haiku";
+      if (lower.includes("sonnet")) return "sonnet";
+      if (lower.includes("opus")) return "opus";
+      return "generic";
+    }
+
+    function renderModelChip(model) {
+      const label = model || "--";
+      const tone = modelTone(label);
+      return '<span class="model-chip ' + tone + '" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+    }
+
+    function totalUsage(request) {
+      const input = typeof request.inputTokens === "number" ? request.inputTokens : 0;
+      const output = typeof request.outputTokens === "number" ? request.outputTokens : 0;
+      if (!input && !output) return null;
+      return input + output;
+    }
+
+    function readCachedSnapshot() {
+      try {
+        const raw = window.localStorage.getItem(snapshotStorageKey);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+
+    function writeCachedSnapshot(payload) {
+      try {
+        window.localStorage.setItem(snapshotStorageKey, JSON.stringify(payload));
+      } catch {
+        // ignore storage failures
+      }
     }
 
     function percentile(values, percentileValue) {
@@ -1855,6 +1994,8 @@ export function buildProxyTraceDashboardHtml(
             status: typeof event.status === "number" ? event.status : null,
             responseBytes: typeof event.responseBytes === "number" ? event.responseBytes : null,
             durationMs: typeof event.durationMs === "number" ? event.durationMs : null,
+            inputTokens: typeof event.inputTokens === "number" ? event.inputTokens : null,
+            outputTokens: typeof event.outputTokens === "number" ? event.outputTokens : null,
             note: event.note || null,
             lastEventType: event.type,
             state: "in_flight"
@@ -1871,6 +2012,8 @@ export function buildProxyTraceDashboardHtml(
         if (typeof event.status === "number") entry.status = event.status;
         if (typeof event.responseBytes === "number") entry.responseBytes = event.responseBytes;
         if (typeof event.durationMs === "number") entry.durationMs = event.durationMs;
+        if (typeof event.inputTokens === "number") entry.inputTokens = event.inputTokens;
+        if (typeof event.outputTokens === "number") entry.outputTokens = event.outputTokens;
         if (event.note) entry.note = event.note;
         entry.lastEventType = event.type;
 
@@ -1895,7 +2038,10 @@ export function buildProxyTraceDashboardHtml(
       const inFlight = requests.filter(function (request) { return request.state === "in_flight"; });
       const uploadEvents = events.filter(function (event) { return event.type === "upload"; }).length;
       const receiveStartEvents = events.filter(function (event) { return event.type === "receive_start"; }).length;
-      const finishedDurations = requests
+      const latencySource = completed.length ? completed : requests.filter(function (request) {
+        return request.state === "completed" || request.state === "error";
+      });
+      const finishedDurations = latencySource
         .map(function (request) { return request.durationMs; })
         .filter(function (value) { return typeof value === "number"; });
       const closedCount = completed.length + failed.length;
@@ -1947,8 +2093,8 @@ export function buildProxyTraceDashboardHtml(
       elements.sessionCommand.textContent = "melu run -- claude";
       elements.sessionCwd.textContent = window.location.pathname || "/__melu";
       elements.sessionStart.textContent = formatTime(stats.firstSeenAt);
-      elements.sessionStatusText.textContent = status.label;
-      elements.sessionStatusPill.dataset.tone = status.tone;
+      elements.sessionStatusText.textContent = isOffline ? text.disconnectedStatus : status.label;
+      elements.sessionStatusPill.dataset.tone = isOffline ? "ready" : status.tone;
 
       if (stats.highTraffic) {
         elements.trafficWarning.classList.add("is-visible");
@@ -1975,7 +2121,7 @@ export function buildProxyTraceDashboardHtml(
 
     function renderTimeline(requests) {
       const recent = requests.slice().reverse().slice(-48);
-      elements.timelineMeta.textContent = text.timelineRange + " · " + recent.length;
+      elements.timelineMeta.textContent = text.timelineRange + " · " + recent.length + " · " + text.timelineLegend;
 
       if (!recent.length) {
         elements.timelineBars.innerHTML = '<div style="color:var(--muted);font-size:12px;">' + escapeHtml(text.noRequestsFound) + '</div>';
@@ -1990,8 +2136,9 @@ export function buildProxyTraceDashboardHtml(
       elements.timelineBars.innerHTML = recent.map(function (request) {
         const duration = typeof request.durationMs === "number" ? request.durationMs : 320;
         const height = Math.max(22, Math.round((duration / maxDuration) * 130));
-        const tone = request.state === "completed" ? "done" : request.state === "error" ? "error" : "in-flight";
-        return '<button class="timeline-bar ' + tone + '" style="height:' + height + 'px" data-request-id="' + escapeHtml(request.requestId) + '" title="' + escapeHtml(request.requestId + " · " + formatDuration(request.durationMs)) + '"></button>';
+        const tone = modelTone(request.model);
+        const stateClass = request.state === "error" ? " is-error" : request.state === "in_flight" ? " is-in-flight" : "";
+        return '<button class="timeline-bar ' + tone + stateClass + '" style="height:' + height + 'px" data-request-id="' + escapeHtml(request.requestId) + '" title="' + escapeHtml(request.requestId + " · " + formatDuration(request.durationMs)) + '"></button>';
       }).join("");
     }
 
@@ -2007,7 +2154,7 @@ export function buildProxyTraceDashboardHtml(
 
     function renderTable(requests) {
       if (!requests.length) {
-        elements.requestTableBody.innerHTML = '<tr><td colspan="7" style="padding:28px 20px;color:var(--muted);text-align:center;">' + escapeHtml(text.noRequestsFound) + '</td></tr>';
+        elements.requestTableBody.innerHTML = '<tr><td colspan="8" style="padding:28px 20px;color:var(--muted);text-align:center;">' + escapeHtml(text.noRequestsFound) + '</td></tr>';
         return;
       }
 
@@ -2017,9 +2164,10 @@ export function buildProxyTraceDashboardHtml(
           + '<td><div class="seq-stack"><div class="mono">' + escapeHtml(String(request.seq)) + '</div><div class="request-id-hint mono" title="' + escapeHtml(request.requestId) + '">' + escapeHtml(compactRequestId(request.requestId)) + '</div></div></td>'
           + '<td>' + escapeHtml(text.mainAgent) + '</td>'
           + '<td class="mono table-subtle">' + escapeHtml(request.path) + '</td>'
-          + '<td>' + escapeHtml(request.model || "--") + '</td>'
+          + '<td>' + renderModelChip(request.model || "--") + '</td>'
           + '<td class="table-subtle">' + escapeHtml(request.stream ? text.streamMode : text.bufferedMode) + '</td>'
           + '<td>' + statusBadge(request) + '</td>'
+          + '<td class="mono">' + escapeHtml(formatTokenCount(totalUsage(request))) + '</td>'
           + '<td class="mono">' + escapeHtml(formatDuration(request.durationMs)) + '</td>'
           + '</tr>';
       }).join("");
@@ -2043,7 +2191,10 @@ export function buildProxyTraceDashboardHtml(
       elements.drawerMethod.textContent = request.method;
       elements.drawerPath.textContent = request.path;
       elements.drawerStatus.textContent = request.status === null ? "--" : String(request.status);
-      elements.drawerModel.textContent = request.model || "--";
+      elements.drawerModel.innerHTML = renderModelChip(request.model || "--");
+      elements.drawerUsage.textContent = formatTokenCount(totalUsage(request));
+      elements.drawerInputTokens.textContent = formatTokenCount(request.inputTokens);
+      elements.drawerOutputTokens.textContent = formatTokenCount(request.outputTokens);
       elements.drawerRequestBytes.textContent = formatBytes(request.requestBytes);
       elements.drawerResponseBytes.textContent = formatBytes(request.responseBytes);
       elements.drawerEventType.textContent = typeInfo.main;
@@ -2072,62 +2223,28 @@ export function buildProxyTraceDashboardHtml(
       }
     }
 
-    function setActiveNav(targetId) {
+    function setActiveNav(viewId) {
       elements.navItems.forEach(function (item) {
-        item.classList.toggle("active", item.dataset.target === targetId);
+        item.classList.toggle("active", item.dataset.view === viewId);
       });
     }
 
-    function bindNav() {
-      const sectionIds = ["overview-section", "requests-section", "future-section"];
+    function switchView(viewId) {
+      currentView = viewId === "details" ? "details" : "overview";
+      setActiveNav(currentView);
+      if (!latestState.requests.length) return;
+      elements.overviewState.classList.toggle("is-visible", currentView === "overview");
+      elements.detailsState.classList.toggle("is-visible", currentView === "details");
+    }
 
+    function bindNav() {
       elements.navItems.forEach(function (item) {
         item.addEventListener("click", function (event) {
           event.preventDefault();
-          const targetId = item.dataset.target;
-          if (!targetId) return;
-          const target = document.getElementById(targetId);
-          if (!target) return;
-          setActiveNav(targetId);
-          if (elements.mainScroll) {
-            const targetTop = target.getBoundingClientRect().top - elements.mainScroll.getBoundingClientRect().top + elements.mainScroll.scrollTop - 18;
-            elements.mainScroll.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
-          } else {
-            target.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
+          switchView(item.dataset.view || "overview");
         });
       });
-
-      if (!elements.mainScroll) return;
-
-      let ticking = false;
-      function syncActiveNav() {
-        const rootTop = elements.mainScroll.getBoundingClientRect().top + 128;
-        let activeId = sectionIds[0];
-        sectionIds.forEach(function (id) {
-          const section = document.getElementById(id);
-          if (!section) return;
-          if (section.getBoundingClientRect().top <= rootTop) {
-            activeId = id;
-          }
-        });
-        setActiveNav(activeId);
-      }
-
-      elements.mainScroll.addEventListener("scroll", function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () {
-          ticking = false;
-          syncActiveNav();
-        });
-      }, { passive: true });
-
-      window.addEventListener("resize", function () {
-        requestAnimationFrame(syncActiveNav);
-      });
-
-      requestAnimationFrame(syncActiveNav);
+      switchView(currentView);
     }
 
     function renderMainView() {
@@ -2138,16 +2255,16 @@ export function buildProxyTraceDashboardHtml(
       if (!latestState.requests.length) {
         elements.emptyState.classList.add("is-visible");
         elements.overviewState.classList.remove("is-visible");
+        elements.detailsState.classList.remove("is-visible");
         closeDrawer();
         return;
       }
 
       elements.emptyState.classList.remove("is-visible");
-      elements.overviewState.classList.add("is-visible");
-
       renderCards(latestState.stats);
       renderTimeline(latestState.requests);
       renderTable(applyFilters(latestState.requests));
+      switchView(currentView);
 
       if (selectedRequestId) {
         openDrawer();
@@ -2168,6 +2285,9 @@ export function buildProxyTraceDashboardHtml(
 
         const payload = await response.json();
         const signature = JSON.stringify(payload.events);
+        isOffline = false;
+        lastSuccessfulRefreshAt = payload.generatedAt;
+        writeCachedSnapshot(payload);
         updateRefreshMeta(payload.generatedAt);
 
         if (signature !== lastRenderSignature) {
@@ -2180,10 +2300,36 @@ export function buildProxyTraceDashboardHtml(
             generatedAt: payload.generatedAt
           };
           renderMainView();
+        } else {
+          renderHeader(latestState.stats);
         }
       } catch (error) {
+        isOffline = true;
+        if (latestState.requests.length) {
+          renderHeader(latestState.stats);
+          elements.footerRefresh.textContent = text.refreshTime + ": " + formatDateTime(lastSuccessfulRefreshAt) + " · " + text.offlineSnapshot;
+          return;
+        }
+
+        const cached = readCachedSnapshot();
+        if (cached && Array.isArray(cached.events)) {
+          lastRenderSignature = JSON.stringify(cached.events);
+          const requests = summarizeRequests(cached.events);
+          latestState = {
+            events: cached.events,
+            requests: requests,
+            stats: buildStats(requests, cached.events),
+            generatedAt: cached.generatedAt || null
+          };
+          lastSuccessfulRefreshAt = cached.generatedAt || null;
+          renderMainView();
+          elements.footerRefresh.textContent = text.refreshTime + ": " + formatDateTime(lastSuccessfulRefreshAt) + " · " + text.offlineSnapshot;
+          return;
+        }
+
         elements.emptyState.classList.add("is-visible");
         elements.overviewState.classList.remove("is-visible");
+        elements.detailsState.classList.remove("is-visible");
         elements.emptyTitle.textContent = text.dashboardReadFailed;
         elements.emptyBody.textContent = text.unableToRead + " " + String(error);
       }
@@ -2234,7 +2380,7 @@ export function buildProxyTraceDashboardHtml(
 
     bindNav();
     updateRefreshMeta(new Date().toISOString());
-    renderHeader({
+    const emptyStats = {
       totalRequests: 0,
       completed: 0,
       failed: 0,
@@ -2246,9 +2392,25 @@ export function buildProxyTraceDashboardHtml(
       p95LatencyMs: null,
       firstSeenAt: null,
       highTraffic: false
-    });
+    };
+    renderHeader(emptyStats);
     elements.emptyState.classList.add("is-visible");
     elements.emptyTracePath.textContent = text.traceFileLabel + ": " + tracePath;
+    const cached = readCachedSnapshot();
+    if (cached && Array.isArray(cached.events) && cached.events.length) {
+      lastRenderSignature = JSON.stringify(cached.events);
+      const requests = summarizeRequests(cached.events);
+      latestState = {
+        events: cached.events,
+        requests: requests,
+        stats: buildStats(requests, cached.events),
+        generatedAt: cached.generatedAt || null
+      };
+      lastSuccessfulRefreshAt = cached.generatedAt || null;
+      isOffline = true;
+      renderMainView();
+      elements.footerRefresh.textContent = text.refreshTime + ": " + formatDateTime(lastSuccessfulRefreshAt) + " · " + text.offlineSnapshot;
+    }
     void refresh();
     setInterval(refresh, 1500);
   </script>
