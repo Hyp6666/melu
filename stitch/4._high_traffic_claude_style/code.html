@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&amp;family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary": "#a37a00", // Refined Gold
+              "surface-bright": "#fbf9f6",
+              "surface-tint": "#532aa8",
+              "secondary-dim": "#71717a",
+              "background": "#fbf9f6", // Warm off-white
+              "on-tertiary": "#ffffff",
+              "on-primary-fixed-variant": "#532aa8",
+              "error": "#991b1b",
+              "inverse-on-surface": "#f5f3f0",
+              "on-error-container": "#fef2f2",
+              "primary-container": "#e9e5ff",
+              "error-dim": "#f87171",
+              "secondary": "#57534e",
+              "error-container": "#fee2e2",
+              "on-tertiary-container": "#451a03",
+              "on-tertiary-fixed": "#451a03",
+              "on-secondary-fixed": "#1c1917",
+              "tertiary-dim": "#d97706",
+              "secondary-container": "#f5f3f0",
+              "secondary-fixed": "#e7e5e4",
+              "tertiary-fixed-dim": "#f59e0b",
+              "on-primary": "#ffffff",
+              "primary-dim": "#c4b5fd",
+              "surface-container-high": "#eae8e5",
+              "primary-fixed-dim": "#ddd6fe",
+              "outline": "#d6d3d1",
+              "secondary-fixed-dim": "#d6d3d1",
+              "surface-dim": "#f5f3f0",
+              "on-secondary-container": "#44403c",
+              "outline-variant": "#e7e5e4",
+              "tertiary-container": "#fef3c7",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#1e1b4b",
+              "on-error": "#ffffff",
+              "surface-variant": "#f5f3f0",
+              "on-tertiary-fixed-variant": "#92400e",
+              "primary-fixed": "#ede9fe",
+              "on-background": "#1b1c1a",
+              "inverse-primary": "#c4b5fd",
+              "surface-container-low": "#faf9f7",
+              "inverse-surface": "#1b1c1a",
+              "on-primary-fixed": "#1e1b4b",
+              "primary": "#532aa8",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#1b1c1a",
+              "tertiary-fixed": "#fef3c7",
+              "surface-container-highest": "#e7e5e4",
+              "on-secondary-fixed-variant": "#57534e",
+              "surface": "#fbf9f6",
+              "surface-container": "#f5f3f0",
+              "on-surface-variant": "#57534e"
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Inter", "sans-serif"],
+              "label": ["Inter", "sans-serif"],
+              "serif": ["Newsreader", "serif"]
+            },
+            borderRadius: {"DEFAULT": "2px", "lg": "4px", "xl": "8px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>.material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+    vertical-align: middle
+    }
+.paper-texture {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuA2pPquDrVxy70J6L0riyc2wUL3Z83zwcRs31Oe8FBFuug51qvA-yUA1L9VyYXPbydkuYjmtPJ9Q_xvBOi-5W31ib7D0In0KlqIyLYADPZIeGyHOMzz8FYb7rR_nMx2PGchfeUaufOShPW-Td_r7k5mYuYn-N1QgAABstedQmnoq5IGL0-5xSL4WBHLkaFt79g3LgCKuF64eS0pu7EvXrcNIUDpf4_vXtmiQGcETCJfUW32UZyRxp1Q6IkaG07ALImZkhH3ANfeomzx);
+    background-blend-mode: multiply
+    }
+.heatmap-bar {
+    transition: height 0.3s ease
+    }
+@keyframes subtle-pulse {
+    0%, 100% {
+        opacity: 1;
+        } 50% {
+        opacity: 0.8;
+        }
+    }
+.animate-subtle-pulse {
+    animation: subtle-pulse 3s ease-in-out infinite
+    }</style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary/20 antialiased overflow-hidden h-screen flex flex-col paper-texture">
+<!-- TopNavBar (Integrated from COMPONENTS_8) -->
+<header class="bg-[#fbf9f6] dark:bg-stone-950 border-b border-stone-200/50 flex justify-between items-center w-full px-16 h-20 z-50 shrink-0">
+<div class="flex items-center gap-12">
+<span class="font-serif italic text-2xl text-[#1b1c1a] dark:text-stone-100">The Editorial Dashboard</span>
+<nav class="hidden lg:flex items-center gap-8 font-sans uppercase tracking-widest text-xs font-bold">
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#532aa8] transition-all" href="#">RUN_7241</a>
+<a class="text-[#532aa8] dark:text-purple-400 border-b-2 border-[#532aa8] pb-1" href="#">STATUS_LIVE</a>
+<a class="text-stone-500 dark:text-stone-400 hover:text-[#532aa8] transition-all" href="#">0.02ms_LATENCY</a>
+</nav>
+</div>
+<!-- Refined High Traffic Warning -->
+<div class="flex items-center bg-[#fdf2f2] border border-[#fecaca] px-4 py-2 rounded-sm animate-subtle-pulse">
+<span class="material-symbols-outlined text-error mr-2 text-sm" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="text-error font-sans font-bold tracking-widest text-[10px] uppercase">High Traffic Warning: Load Exceeds 85%</span>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-stone-400 hover:text-[#532aa8] transition-all"><span class="material-symbols-outlined">settings</span></button>
+<button class="text-stone-400 hover:text-[#532aa8] transition-all"><span class="material-symbols-outlined">notifications</span></button>
+<div class="w-8 h-8 rounded-full bg-stone-200 overflow-hidden">
+<img alt="User profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXpLmNi7loz1zwFVvNN9yTR3Qzf98NvCOhvD22TAah0TU7tySAXXg1lOPiTg00NdlH_o3FYcAhIkcDD2EC4T5mgArsV7oaqG-xZ7IdzqhRj1iFcJ7uqvPVzTgf1Y_C3FgEAOAHiUEsoYPR37R5z1YJSNu6NsFfc9Cf43_plcGGrkc9GYg7KFRIQxANf_UTQQXdkLZlpJOL9RnDzxGcqhxWy4mHxkGb6Yz4uh2V_tcnMmupvrAEwIc_DgaEjHCsyc5Q4cnDCd7Qgsz_"/>
+</div>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- SideNavBar (Integrated from COMPONENTS_8) -->
+<aside class="bg-[#f5f3f0] dark:bg-stone-900 w-64 h-full flex flex-col py-12 px-8 shrink-0 z-40 border-r border-stone-200/30">
+<div class="mb-12">
+<h2 class="font-serif text-xl text-[#1b1c1a] dark:text-stone-100">Editorial</h2>
+<p class="font-sans text-[11px] font-semibold tracking-tighter text-stone-500 uppercase">Observability v2.4</p>
+</div>
+<nav class="flex-1 space-y-6">
+<a class="flex items-center gap-3 text-[#532aa8] dark:text-purple-400 font-bold font-sans text-[11px] tracking-tighter hover:translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                    OVERVIEW
+                </a>
+<a class="flex items-center gap-3 text-stone-500 dark:text-stone-400 font-sans text-[11px] font-semibold tracking-tighter hover:bg-[#eae8e5] dark:hover:bg-stone-800 rounded-sm hover:translate-x-1 transition-transform duration-200 p-1 -ml-1" href="#">
+<span class="material-symbols-outlined">terminal</span>
+                    TERMINALS
+                </a>
+<a class="flex items-center gap-3 text-stone-500 dark:text-stone-400 font-sans text-[11px] font-semibold tracking-tighter hover:bg-[#eae8e5] dark:hover:bg-stone-800 rounded-sm hover:translate-x-1 transition-transform duration-200 p-1 -ml-1" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+                    AGENT_TREE
+                </a>
+</nav>
+<div class="mt-auto space-y-4 pt-8 border-t border-stone-200/50">
+<a class="flex items-center gap-3 text-stone-500 dark:text-stone-400 font-sans text-[11px] font-semibold tracking-tighter hover:bg-[#eae8e5] dark:hover:bg-stone-800 rounded-sm hover:translate-x-1 transition-transform duration-200 p-1 -ml-1" href="#">
+<span class="material-symbols-outlined">settings</span>
+                    SETTINGS
+                </a>
+<a class="flex items-center gap-3 text-stone-500 dark:text-stone-400 font-sans text-[11px] font-semibold tracking-tighter hover:bg-[#eae8e5] dark:hover:bg-stone-800 rounded-sm hover:translate-x-1 transition-transform duration-200 p-1 -ml-1" href="#">
+<span class="material-symbols-outlined">help</span>
+                    HELP
+                </a>
+</div>
+</aside>
+<main class="flex-1 overflow-y-auto p-12 relative">
+<div class="max-w-7xl mx-auto">
+<div class="grid grid-cols-12 gap-8 mb-12">
+<div class="col-span-12 lg:col-span-5 bg-white border border-stone-200 p-8 flex flex-col justify-between shadow-sm">
+<div>
+<div class="flex justify-between items-start mb-6">
+<span class="font-sans font-bold text-tertiary uppercase tracking-[0.2em] text-[10px]">Status: Critical Concurrency</span>
+<span class="bg-[#fef3c7] text-tertiary text-[9px] font-bold px-2 py-1 rounded-sm">IN_FLIGHT</span>
+</div>
+<h3 class="font-serif italic text-6xl text-on-surface mb-2">4,281</h3>
+<p class="font-sans text-[11px] uppercase text-stone-400 tracking-widest font-semibold">Active Concurrent Requests</p>
+</div>
+<div class="mt-8 h-1 bg-stone-100 w-full overflow-hidden">
+<div class="h-full bg-tertiary w-[88%] transition-all duration-1000"></div>
+</div>
+</div>
+<div class="col-span-6 lg:col-span-3 bg-white border border-stone-200 p-8 shadow-sm">
+<span class="font-sans font-bold text-[#532aa8] uppercase tracking-[0.2em] text-[10px]">Avg Latency</span>
+<h3 class="font-serif italic text-5xl text-on-surface my-4">0.42<span class="text-2xl not-italic ml-1">ms</span></h3>
+<div class="flex items-center text-error text-[10px] font-bold gap-1 tracking-tight">
+<span class="material-symbols-outlined text-xs">trending_up</span>
+                            +12.4% FROM BASELINE
+                        </div>
+</div>
+<div class="col-span-6 lg:col-span-4 bg-[#f5f3f0] border border-stone-200 p-8 relative overflow-hidden shadow-sm">
+<span class="font-sans font-bold text-stone-500 uppercase tracking-[0.2em] text-[10px]">Queue Depth</span>
+<h3 class="font-serif italic text-5xl text-on-surface my-4">1,092</h3>
+<div class="flex gap-1.5">
+<div class="h-6 w-1 bg-tertiary"></div>
+<div class="h-6 w-1 bg-tertiary"></div>
+<div class="h-6 w-1 bg-tertiary/60"></div>
+<div class="h-6 w-1 bg-tertiary/40"></div>
+<div class="h-6 w-1 bg-tertiary/20"></div>
+</div>
+<div class="absolute -right-4 -bottom-4 opacity-5">
+<span class="material-symbols-outlined text-9xl">reorder</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-12">
+<div class="col-span-12 xl:col-span-7">
+<div class="flex justify-between items-center mb-6 border-b border-stone-200 pb-4">
+<h4 class="font-serif italic text-xl text-on-surface">Realtime Request Log</h4>
+<div class="flex gap-6 text-[10px] font-sans font-bold text-stone-400 uppercase tracking-widest">
+<span>S_ID: AE-882</span>
+<span>NODE: US-EAST-1A</span>
+</div>
+</div>
+<div class="space-y-4">
+<!-- Active Task -->
+<div class="grid grid-cols-12 gap-4 p-4 bg-[#fdf2f2] border border-[#fecaca] items-center rounded-sm">
+<div class="col-span-2 font-mono text-[9px] text-tertiary font-bold">#TX_99012</div>
+<div class="col-span-4 font-sans font-bold text-[11px] text-stone-800">AGENT_NEGOTIATOR_V2</div>
+<div class="col-span-4 h-1 bg-stone-200 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-3/4"></div>
+</div>
+<div class="col-span-2 text-right font-sans font-bold text-[10px] text-tertiary">75% PROC</div>
+</div>
+<!-- Success Task -->
+<div class="grid grid-cols-12 gap-4 p-4 border border-stone-100 items-center rounded-sm">
+<div class="col-span-2 font-mono text-[9px] text-stone-400">#TX_99011</div>
+<div class="col-span-4 font-sans font-bold text-[11px] text-stone-800">DATA_INGEST_LAMBDA</div>
+<div class="col-span-4 h-1 bg-stone-100 rounded-full overflow-hidden">
+<div class="h-full bg-emerald-600 w-full"></div>
+</div>
+<div class="col-span-2 text-right font-sans font-bold text-[10px] text-emerald-600">COMPLETE</div>
+</div>
+<!-- Core Task -->
+<div class="grid grid-cols-12 gap-4 p-4 bg-white border border-stone-200 items-center rounded-sm">
+<div class="col-span-2 font-mono text-[9px] text-tertiary">#TX_99010</div>
+<div class="col-span-4 font-sans font-bold text-[11px] text-stone-800">ROUTING_ENGINE_CORE</div>
+<div class="col-span-4 h-1 bg-stone-100 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-1/4"></div>
+</div>
+<div class="col-span-2 text-right font-sans font-bold text-[10px] text-tertiary">25% PROC</div>
+</div>
+<!-- High Load Task -->
+<div class="grid grid-cols-12 gap-4 p-4 bg-[#fdf2f2] border border-[#fecaca] items-center rounded-sm">
+<div class="col-span-2 font-mono text-[9px] text-tertiary font-bold">#TX_99009</div>
+<div class="col-span-4 font-sans font-bold text-[11px] text-stone-800">AUTH_VALIDATOR_SEC</div>
+<div class="col-span-4 h-1 bg-stone-200 rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[92%]"></div>
+</div>
+<div class="col-span-2 text-right font-sans font-bold text-[10px] text-tertiary">92% PROC</div>
+</div>
+</div>
+</div>
+<div class="col-span-12 xl:col-span-5">
+<div class="bg-white border border-stone-200 p-8 shadow-sm h-full">
+<div class="flex items-center gap-2 mb-8 border-b border-stone-100 pb-4">
+<span class="material-symbols-outlined text-tertiary text-lg">timeline</span>
+<span class="font-sans font-bold uppercase tracking-[0.2em] text-[10px] text-stone-500">Traffic Density Heatmap</span>
+</div>
+<div class="relative h-64 w-full bg-[#fbf9f6] border border-stone-100 rounded-sm">
+<div class="absolute inset-0 flex gap-2 p-4 items-end">
+<div class="flex-1 bg-tertiary/10 h-[30%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/20 h-[45%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/30 h-[60%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/50 h-[85%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/70 h-[95%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary h-[100%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary h-[98%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/90 h-[92%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/70 h-[80%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/40 h-[65%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/30 h-[50%] heatmap-bar"></div>
+<div class="flex-1 bg-tertiary/20 h-[40%] heatmap-bar"></div>
+</div>
+<div class="absolute top-[15%] left-0 w-full border-t border-error/20 border-dashed z-10"></div>
+<div class="absolute top-2 right-2 bg-error text-white px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider rounded-sm">Threshold Breached</div>
+</div>
+<div class="mt-8 grid grid-cols-2 gap-6">
+<div class="p-4 bg-[#f5f3f0] rounded-sm">
+<div class="text-[9px] text-stone-400 uppercase tracking-widest font-bold mb-1">Peak RPS</div>
+<div class="text-2xl font-serif italic text-on-surface">14.2K</div>
+</div>
+<div class="p-4 bg-[#f5f3f0] rounded-sm">
+<div class="text-[9px] text-stone-400 uppercase tracking-widest font-bold mb-1">Drop Rate</div>
+<div class="text-2xl font-serif italic text-error">0.03%</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Footer (Integrated from COMPONENTS_8) -->
+<footer class="flex justify-between items-center w-full px-16 py-4 fixed bottom-0 left-0 z-40 bg-[#fbf9f6] dark:bg-stone-950 border-t border-stone-200/50">
+<div class="flex items-center gap-6 font-sans text-[10px] uppercase tracking-widest text-stone-400">
+<span>REFRESH_TIME: 14:02:11</span>
+<span class="text-[#735c00] dark:text-yellow-600 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
+                LIVE_STREAM_ACTIVE
+            </span>
+<span>PATH: /usr/bin/agent_obs</span>
+</div>
+<div class="flex items-center gap-8 font-sans text-[10px] uppercase tracking-widest">
+<a class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 underline transition-colors" href="#">PRIVACY_WARNING</a>
+<a class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 underline transition-colors" href="#">SYSTEM_LOGS</a>
+</div>
+</footer>
+<!-- Primary Action Button -->
+<div class="fixed bottom-20 right-16 z-50">
+<button class="bg-[#1b1c1a] text-white px-8 py-4 shadow-2xl hover:bg-stone-800 transition-all flex items-center gap-3 font-sans font-bold text-[10px] tracking-widest uppercase rounded-sm border border-stone-700">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">bolt</span>
+            Force Shred Queue
+        </button>
+</div>
+</body></html>

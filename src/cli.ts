@@ -179,6 +179,7 @@ program
       writeFileSync(PID_FILE, String(proxyChild.pid));
     }
     await waitForProxy(port, 120000, config.uiLanguage);
+    console.log(`[Melu] trace dashboard: http://127.0.0.1:${port}/__melu`);
 
     const workerChild = spawnMeluProcess(
       "extractor-worker-main.js",

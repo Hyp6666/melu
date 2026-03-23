@@ -14,6 +14,7 @@ export const MODELS_DIR = join(MELU_HOME, "models");
 export const MEMORIES_DIR = join(MELU_HOME, "memories");
 export const SOCKETS_DIR = join(MELU_HOME, "sockets");
 export const STATS_DIR = join(MELU_HOME, "stats");
+export const TRACES_DIR = join(MELU_HOME, "traces");
 export const PENDING_EXTRACTIONS_DIR =
   process.env.MELU_PENDING_EXTRACTIONS_DIR?.trim() || join(MELU_HOME, "pending-extractions");
 export const CONFIG_FILE = join(MELU_HOME, "config.json");
@@ -151,7 +152,7 @@ export function saveConfig(config: MeluConfig): void {
 }
 
 export function ensureDirs(): void {
-  for (const dir of [MELU_HOME, MODELS_DIR, MEMORIES_DIR, SOCKETS_DIR, STATS_DIR, PENDING_EXTRACTIONS_DIR]) {
+  for (const dir of [MELU_HOME, MODELS_DIR, MEMORIES_DIR, SOCKETS_DIR, STATS_DIR, TRACES_DIR, PENDING_EXTRACTIONS_DIR]) {
     if (!existsSync(dir)) {
       mkdirSync(dir, { recursive: true });
     }

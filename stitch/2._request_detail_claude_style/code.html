@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#532aa8", // Purple accent
+              "secondary": "#735c00", // Gold accent
+              "background": "#fbf9f6", // Warm paper
+              "surface": "#f5f3f0", // Tonal shift
+              "surface-variant": "#eae8e5",
+              "on-background": "#1b1c1a",
+              "on-surface": "#41423e",
+              "outline": "#d1cfcc",
+            },
+            fontFamily: {
+              "headline": ["Newsreader", "serif"],
+              "body": ["Inter", "sans-serif"],
+              "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"]
+            },
+            borderRadius: {"DEFAULT": "2px", "lg": "4px", "xl": "8px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #fbf9f6; }
+        ::-webkit-scrollbar-thumb { background: #d1cfcc; border-radius: 10px; }
+        .paper-card {
+            background: #ffffff;
+            border: 1px solid #e5e3e0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body selection:bg-primary/10 selection:text-primary overflow-hidden">
+<!-- TopAppBar (from COMPONENTS_8) -->
+<header class="fixed top-0 left-0 z-50 flex justify-between items-center w-full px-16 h-20 bg-[#fbf9f6] border-b border-stone-200/50">
+<div class="flex items-center gap-12">
+<span class="font-serif italic text-2xl text-[#1b1c1a] tracking-tight">Editorial Dashboard</span>
+<nav class="hidden md:flex items-center gap-8">
+<a class="font-sans uppercase tracking-widest text-[11px] font-bold text-[#532aa8] border-b-2 border-[#532aa8] pb-1 transition-all" href="#">RUN_ID</a>
+<a class="font-sans uppercase tracking-widest text-[11px] font-bold text-stone-500 hover:text-[#532aa8] transition-all" href="#">STATUS</a>
+<a class="font-sans uppercase tracking-widest text-[11px] font-bold text-stone-500 hover:text-[#532aa8] transition-all" href="#">LATENCY</a>
+</nav>
+</div>
+<div class="flex items-center gap-6 text-stone-500">
+<button class="p-2 hover:text-[#532aa8] transition-all active:scale-95"><span class="material-symbols-outlined">refresh</span></button>
+<button class="p-2 hover:text-[#532aa8] transition-all active:scale-95"><span class="material-symbols-outlined">settings</span></button>
+<button class="p-2 hover:text-[#532aa8] transition-all active:scale-95"><span class="material-symbols-outlined">notifications</span></button>
+</div>
+</header>
+<!-- SideNavBar (from COMPONENTS_8) -->
+<aside class="fixed left-0 top-0 h-screen w-64 bg-[#f5f3f0] flex flex-col py-12 px-8 space-y-8 z-40">
+<div class="mb-4">
+<div class="font-serif text-xl text-[#1b1c1a]">Editorial</div>
+<div class="font-sans text-[11px] font-semibold tracking-tighter text-stone-500 uppercase">Observability v2.4</div>
+</div>
+<nav class="flex-1 flex flex-col space-y-2">
+<a class="flex items-center gap-3 py-2 px-3 font-sans text-[11px] font-semibold tracking-tighter text-[#532aa8] bg-[#eae8e5] rounded-sm transform translate-x-1 transition-transform" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span> OVERVIEW
+        </a>
+<a class="flex items-center gap-3 py-2 px-3 font-sans text-[11px] font-semibold tracking-tighter text-stone-500 hover:bg-[#eae8e5] rounded-sm hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">terminal</span> TERMINALS
+        </a>
+<a class="flex items-center gap-3 py-2 px-3 font-sans text-[11px] font-semibold tracking-tighter text-stone-500 hover:bg-[#eae8e5] rounded-sm hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">account_tree</span> AGENT_TREE
+        </a>
+</nav>
+<div class="pt-8 border-t border-stone-200/50 space-y-2">
+<a class="flex items-center gap-3 py-2 px-3 font-sans text-[11px] font-semibold tracking-tighter text-stone-500 hover:bg-[#eae8e5] rounded-sm hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span> SETTINGS
+        </a>
+<a class="flex items-center gap-3 py-2 px-3 font-sans text-[11px] font-semibold tracking-tighter text-stone-500 hover:bg-[#eae8e5] rounded-sm hover:translate-x-1 transition-all" href="#">
+<span class="material-symbols-outlined text-[18px]">help</span> HELP
+        </a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="ml-64 pt-20 pb-16 min-h-screen relative transition-all duration-300 pr-[30%]">
+<!-- Backdrop overlay for drawer open -->
+<div class="absolute inset-0 bg-stone-900/5 z-10 pointer-events-none"></div>
+<div class="p-12 max-w-6xl mx-auto">
+<div class="flex justify-between items-end mb-12">
+<div>
+<h1 class="text-4xl font-serif text-on-background mb-2">System Operational Trace</h1>
+<p class="font-sans text-[10px] uppercase tracking-[0.2em] text-[#735c00] font-bold">Latest Activity • Live Recognition</p>
+</div>
+<div class="flex gap-4">
+<button class="px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest text-stone-600 border border-stone-300 hover:bg-white transition-colors">Export_CSV</button>
+<button class="px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest bg-primary text-white hover:opacity-90 transition-opacity">New_Session</button>
+</div>
+</div>
+<!-- Table Layout -->
+<div class="paper-card overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface font-sans text-[10px] uppercase tracking-widest text-stone-500 font-bold">
+<th class="py-4 px-6 border-b border-stone-200">Timestamp</th>
+<th class="py-4 px-6 border-b border-stone-200">ID</th>
+<th class="py-4 px-6 border-b border-stone-200">Agent</th>
+<th class="py-4 px-6 border-b border-stone-200">Status</th>
+<th class="py-4 px-6 border-b border-stone-200">Latency</th>
+</tr>
+</thead>
+<tbody class="font-mono text-[11px] text-stone-600">
+<tr class="hover:bg-surface-variant/30 transition-colors border-b border-stone-100">
+<td class="py-4 px-6 opacity-60">14:02:51.002</td>
+<td class="py-4 px-6 text-primary font-bold">req_9k2m_01</td>
+<td class="py-4 px-6">MAIN_ENGINE</td>
+<td class="py-4 px-6"><span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold border border-emerald-100 uppercase">Success</span></td>
+<td class="py-4 px-6">1.2s</td>
+</tr>
+<tr class="bg-surface/30 hover:bg-surface-variant/30 transition-colors border-b border-stone-100">
+<td class="py-4 px-6 opacity-60">14:02:45.892</td>
+<td class="py-4 px-6 text-primary font-bold">req_892x_42</td>
+<td class="py-4 px-6">MAIN_ENGINE</td>
+<td class="py-4 px-6"><span class="text-emerald-700 bg-emerald-50 px-2 py-0.5 text-[9px] font-bold border border-emerald-100 uppercase">Success</span></td>
+<td class="py-4 px-6 font-bold">2.3s</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors border-b border-stone-100">
+<td class="py-4 px-6 opacity-60">14:02:40.115</td>
+<td class="py-4 px-6 text-primary font-bold">req_a2b1_09</td>
+<td class="py-4 px-6">REASONER_v2</td>
+<td class="py-4 px-6"><span class="text-secondary bg-stone-100 px-2 py-0.5 text-[9px] font-bold border border-stone-200 uppercase">In_Flight</span></td>
+<td class="py-4 px-6">--</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+<!-- Request Detail Drawer -->
+<aside class="fixed right-0 top-0 h-full w-[30%] bg-[#fbf9f6] border-l border-stone-200 z-50 flex flex-col shadow-[-10px_0_30px_rgba(0,0,0,0.03)]">
+<!-- Drawer Header -->
+<div class="h-20 flex items-center justify-between px-8 bg-surface border-b border-stone-200">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">terminal</span>
+<span class="font-mono text-[11px] font-bold text-on-surface tracking-tight">req_892x_42_detail</span>
+</div>
+<button class="text-stone-400 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Drawer Content -->
+<div class="flex-1 overflow-y-auto p-8 space-y-10">
+<!-- Section 1: Metadata -->
+<section>
+<h3 class="font-serif italic text-lg text-primary mb-6 border-b border-primary/10 pb-2">01. Metadata</h3>
+<div class="grid grid-cols-2 gap-y-6 gap-x-8">
+<div>
+<p class="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">Request_ID</p>
+<p class="font-mono text-[11px] text-on-surface">req_892x_42</p>
+</div>
+<div>
+<p class="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">Sequence</p>
+<p class="font-mono text-[11px] text-on-surface">SEQ_9921_A</p>
+</div>
+<div>
+<p class="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">Terminal_Node</p>
+<p class="font-mono text-[11px] text-on-surface">US-EAST-01</p>
+</div>
+<div>
+<p class="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">Active_Agent</p>
+<p class="font-mono text-[11px] text-primary font-bold">MAIN_ENGINE</p>
+</div>
+<div>
+<p class="text-[9px] font-bold uppercase tracking-widest text-stone-400 mb-1">Total_Duration</p>
+<p class="font-mono text-[11px] text-secondary font-bold">2.3s</p>
+</div>
+</div>
+</section>
+<!-- Section 2: Transport Layer -->
+<section>
+<h3 class="font-serif italic text-lg text-primary mb-6 border-b border-primary/10 pb-2">02. Transport Layer</h3>
+<div class="paper-card p-5 space-y-4">
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-stone-400 font-bold uppercase tracking-widest text-[9px]">Method</span>
+<span class="bg-primary/5 text-primary px-2 py-0.5 font-bold border border-primary/10">POST</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-stone-400 font-bold uppercase tracking-widest text-[9px]">Endpoint_Path</span>
+<span class="font-mono text-on-surface">/api/v1/chat/completions</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-stone-400 font-bold uppercase tracking-widest text-[9px]">Status_Code</span>
+<span class="text-emerald-700 font-bold">200_OK</span>
+</div>
+<div class="flex justify-between items-center text-[11px]">
+<span class="text-stone-400 font-bold uppercase tracking-widest text-[9px]">Model_Ref</span>
+<span class="text-primary font-medium">claude-3-5-sonnet</span>
+</div>
+</div>
+</section>
+<!-- Section 3: Privacy/Security -->
+<section>
+<h3 class="font-serif italic text-lg text-primary mb-6 border-b border-primary/10 pb-2">03. Content Visibility</h3>
+<div class="paper-card bg-[#fbf9f6] p-8 text-center space-y-4 border-dashed">
+<div class="flex justify-center">
+<span class="material-symbols-outlined text-4xl text-secondary/30">lock</span>
+</div>
+<h4 class="font-serif text-lg text-on-surface italic">Protected Content Layer</h4>
+<p class="text-[11px] text-stone-500 leading-relaxed max-w-[200px] mx-auto">
+                    Raw logs are encrypted by default. Authorized access required for ID <span class="text-primary font-bold">#7241</span>.
+                </p>
+<button class="mt-4 w-full bg-white border border-stone-300 py-2.5 text-[10px] font-bold uppercase tracking-widest text-stone-600 hover:bg-stone-50 transition-colors">Request_Override</button>
+</div>
+</section>
+<!-- Section 4: Analysis -->
+<section>
+<h3 class="font-serif italic text-lg text-primary mb-4 border-b border-primary/10 pb-2">04. System Analysis</h3>
+<div class="space-y-1">
+<div class="flex justify-between items-center p-4 bg-surface hover:bg-surface-variant transition-colors cursor-pointer border-l-2 border-primary">
+<span class="text-[11px] font-bold uppercase tracking-widest text-on-surface">Memory Injection</span>
+<span class="material-symbols-outlined text-[16px] text-stone-400">chevron_right</span>
+</div>
+<div class="flex justify-between items-center p-4 bg-surface hover:bg-surface-variant transition-colors cursor-pointer border-l-2 border-stone-200">
+<span class="text-[11px] font-bold uppercase tracking-widest text-on-surface">Agent Lineage</span>
+<span class="material-symbols-outlined text-[16px] text-stone-400">chevron_right</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Drawer Footer -->
+<div class="p-6 bg-surface border-t border-stone-200 flex gap-3">
+<button class="flex-1 py-4 text-[11px] font-bold uppercase tracking-[0.2em] bg-primary text-white hover:opacity-90 transition-opacity">Replay_Trace</button>
+<button class="px-5 py-4 border border-stone-300 text-stone-600 hover:bg-white transition-colors"><span class="material-symbols-outlined">share</span></button>
+</div>
+</aside>
+<!-- Footer (from COMPONENTS_8) -->
+<footer class="flex justify-between items-center w-full px-16 py-4 fixed bottom-0 left-0 z-40 bg-[#fbf9f6] border-t border-stone-200/50 h-10">
+<div class="font-sans text-[10px] uppercase tracking-widest text-stone-400">
+        REFRESH_TIME: 14:02:11 | SYSTEM_PATH: /usr/bin/agent_obs
+    </div>
+<div class="flex gap-8">
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline transition-all" href="#">PRIVACY_WARNING</a>
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline transition-all" href="#">SYSTEM_LOGS</a>
+</div>
+</footer>
+</body></html>

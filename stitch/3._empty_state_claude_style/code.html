@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "paper": "#fbf9f6",
+              "paper-darker": "#f5f3f0",
+              "anthropic-purple": "#532aa8",
+              "stone": {
+                50: "#fbf9f6",
+                100: "#f5f3f0",
+                200: "#eae8e5",
+                300: "#d6d3d1",
+                400: "#a8a29e",
+                500: "#78716c",
+                600: "#57534e",
+                700: "#44403c",
+                800: "#292524",
+                900: "#1c1917",
+                950: "#0c0a09",
+              }
+            },
+            fontFamily: {
+              "serif": ["Newsreader", "serif"],
+              "sans": ["Inter", "sans-serif"],
+              "body": ["Inter", "sans-serif"],
+            },
+            borderRadius: {"DEFAULT": "4px", "lg": "8px", "xl": "12px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #fbf9f6;
+            color: #1c1917;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+        .claude-shadow {
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-paper text-stone-900 selection:bg-anthropic-purple/10">
+<!-- TopAppBar (Component: TopNavBar) -->
+<header class="bg-paper border-b border-stone-200/60 fixed top-0 left-0 z-50 flex justify-between items-center w-full px-16 h-20">
+<div class="flex items-center gap-12">
+<span class="font-serif italic text-2xl text-stone-900 tracking-tight">Editorial</span>
+<nav class="hidden md:flex gap-8 items-center">
+<span class="font-sans uppercase tracking-widest text-[10px] font-bold text-stone-500 hover:text-anthropic-purple transition-all cursor-pointer">RUN_7241</span>
+<span class="font-sans uppercase tracking-widest text-[10px] font-bold text-anthropic-purple border-b-2 border-anthropic-purple pb-1">STATUS_LIVE</span>
+<span class="font-sans uppercase tracking-widest text-[10px] font-bold text-stone-500 hover:text-anthropic-purple transition-all cursor-pointer">0.02ms_LATENCY</span>
+</nav>
+</div>
+<div class="flex items-center gap-6">
+<button class="material-symbols-outlined text-stone-400 hover:text-anthropic-purple transition-all">settings</button>
+<button class="material-symbols-outlined text-stone-400 hover:text-anthropic-purple transition-all">notifications</button>
+<div class="w-8 h-8 rounded-full bg-stone-200 overflow-hidden border border-stone-300/50">
+<div class="w-full h-full bg-stone-300 flex items-center justify-center text-stone-500 text-[10px] font-bold">JD</div>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-screen w-64 bg-paper-darker flex flex-col py-12 px-8 space-y-8 z-40">
+<div class="mb-4">
+<div class="font-serif text-xl text-stone-900">Editorial</div>
+<div class="font-sans text-[11px] font-semibold tracking-tighter text-stone-500 uppercase">Observability v2.4</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 py-2 text-anthropic-purple font-bold font-sans text-[11px] tracking-tight group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="dashboard">dashboard</span>
+<span class="group-hover:translate-x-1 transition-transform duration-200">OVERVIEW</span>
+</a>
+<a class="flex items-center gap-3 py-2 text-stone-500 hover:bg-stone-200/50 rounded-sm font-sans text-[11px] font-semibold tracking-tight transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="terminal">terminal</span>
+<span class="group-hover:translate-x-1 transition-transform duration-200">TERMINALS</span>
+</a>
+<a class="flex items-center gap-3 py-2 text-stone-500 hover:bg-stone-200/50 rounded-sm font-sans text-[11px] font-semibold tracking-tight transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_tree">account_tree</span>
+<span class="group-hover:translate-x-1 transition-transform duration-200">AGENT_TREE</span>
+</a>
+</nav>
+<div class="mt-auto space-y-1">
+<a class="flex items-center gap-3 py-2 text-stone-500 hover:bg-stone-200/50 rounded-sm font-sans text-[11px] font-semibold tracking-tight transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="group-hover:translate-x-1 transition-transform duration-200">SETTINGS</span>
+</a>
+<a class="flex items-center gap-3 py-2 text-stone-500 hover:bg-stone-200/50 rounded-sm font-sans text-[11px] font-semibold tracking-tight transition-all group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+<span class="group-hover:translate-x-1 transition-transform duration-200">HELP</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 mt-20 mb-14 h-[calc(100vh-136px)] relative overflow-hidden flex flex-col items-center justify-center">
+<!-- Subtle Paper Texture Overlay -->
+<div class="absolute inset-0 z-0 pointer-events-none opacity-[0.03]" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB3VFORMajC_tZGw0NxEROVKvrV7IjWZhVQxnXttTwMmEFe_QC0hzpb7RV8tTFo2RWE3B1ttcdrdN2r3PUWMyd5LAT2o1CV0YCIRPpi6CxvH_n76A_wiS9GrgMlpPUXfcUDfgK6VLDz4gn5fnPXrnzR6ALJ77nRvCWCQu144GCPrGt1_TFqGTqFhcj6V_EM41dhnlbX_hCTdhQhdp7_P1tn7ed_V7zsx8IOm4k5iaUBZGbyfylB14GiaXFuHsN9QMy702JphaRFWkHV');"></div>
+<!-- Empty State Container -->
+<div class="relative z-10 max-w-lg w-full px-8 text-center">
+<!-- Claude-style Illustration -->
+<div class="mb-12 flex justify-center">
+<div class="relative w-56 h-56 flex items-center justify-center">
+<!-- Abstract "Waiting" Illustration -->
+<div class="absolute inset-0 border border-stone-200 rounded-full scale-100 opacity-20"></div>
+<div class="absolute inset-0 border border-stone-200 rounded-full scale-[0.85] opacity-40"></div>
+<div class="absolute inset-0 border border-stone-200 rounded-full scale-[0.7] opacity-60"></div>
+<div class="relative z-10 bg-paper p-8 rounded-2xl claude-shadow border border-stone-100">
+<div class="flex flex-col gap-3 w-32">
+<div class="h-1.5 w-1/2 bg-stone-200 rounded-full"></div>
+<div class="h-1.5 w-full bg-stone-100 rounded-full"></div>
+<div class="h-1.5 w-2/3 bg-stone-100 rounded-full"></div>
+<div class="mt-4 flex justify-center">
+<span class="material-symbols-outlined text-anthropic-purple/40 text-5xl animate-pulse">monitoring</span>
+</div>
+</div>
+</div>
+<!-- Floating geometric accents -->
+<div class="absolute top-4 right-4 w-3 h-3 bg-anthropic-purple/10 rounded-full"></div>
+<div class="absolute bottom-10 left-6 w-2 h-2 bg-stone-300 rounded-full"></div>
+</div>
+</div>
+<!-- Text Content -->
+<div class="space-y-4">
+<h1 class="text-3xl font-serif text-stone-900 tracking-tight">No traffic detected yet.</h1>
+<p class="text-stone-500 font-sans text-sm leading-relaxed max-w-[320px] mx-auto">
+                The observability engine is primed and listening. Run a command in your local terminal to start real-time monitoring of AI agent telemetry.
+            </p>
+</div>
+<!-- System Meta Info -->
+<div class="mt-12 flex flex-col items-center gap-3">
+<div class="flex items-center gap-2 px-3 py-1 bg-stone-100 rounded-full">
+<div class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+<span class="font-sans text-[10px] font-bold tracking-widest text-stone-600 uppercase">SYSTEM_READY</span>
+</div>
+<div class="font-sans text-[10px] text-stone-400 space-x-4">
+<span>PORT: 8080</span>
+<span class="text-stone-300">|</span>
+<span>ROOT: /projects/melu-agent</span>
+</div>
+</div>
+<!-- Footer Link -->
+<div class="mt-12">
+<a class="group inline-flex items-center gap-2 text-anthropic-purple hover:text-stone-900 font-sans font-bold text-[11px] tracking-widest uppercase transition-colors" href="#">
+                View recently ended runs
+                <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="flex justify-between items-center w-full px-16 py-4 fixed bottom-0 left-0 z-40 bg-paper border-t border-stone-200/50">
+<div class="flex items-center gap-8">
+<span class="font-sans text-[10px] uppercase tracking-widest text-stone-400">REFRESH_TIME: 14:02:11</span>
+<span class="font-sans text-[10px] uppercase tracking-widest text-stone-400">PATH: /usr/bin/agent_obs</span>
+</div>
+<div class="flex items-center gap-6">
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline transition-all" href="#">PRIVACY_WARNING</a>
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline transition-all" href="#">SYSTEM_LOGS</a>
+</div>
+</footer>
+</body></html>

@@ -16,14 +16,32 @@ import {
   getMeluRuntimeContext,
   type MeluRuntimeContext,
 } from "./runtime-context.js";
+import {
+  appendProxyTraceEvent,
+  buildProxyTraceDashboardHtml,
+  readProxyTraceEvents,
+  type TraceDashboardLanguage,
+} from "./trace.js";
 
 let store: MemoryStore | null = null;
 let config: MeluConfig;
 let activeMemoryPath: string | null = null;
 let runtimeContext: MeluRuntimeContext | null = null;
 let didLogEmbedderFallback = false;
+let traceSequence = 0;
 /** 本次 run 已入队的 userText 哈希集合，防止同一条消息被重复提取 */
 const enqueuedTextHashes = new Set<string>();
+
+interface ProxyTraceRequestContext {
+  seq: number;
+  requestId: string;
+  startedAt: number;
+  method: string;
+  path: string;
+  stream: boolean;
+  model: string | null;
+  requestBytes: number;
+}
 
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 16);
@@ -116,12 +134,90 @@ async function readBody(req: IncomingMessage): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+function getTraceRunId(): string | null {
+  return runtimeContext?.runId ?? null;
+}
+
+function createTraceContext(method: string, path: string, requestBytes: number): ProxyTraceRequestContext {
+  const seq = ++traceSequence;
+  const runId = getTraceRunId() ?? "legacy";
+  return {
+    seq,
+    requestId: `${runId}-${seq}`,
+    startedAt: Date.now(),
+    method,
+    path,
+    stream: false,
+    model: null,
+    requestBytes,
+  };
+}
+
+function recordTraceEvent(
+  ctx: ProxyTraceRequestContext,
+  type: "upload" | "receive_start" | "receive_end" | "receive_error",
+  extra: Partial<{
+    status: number;
+    responseBytes: number;
+    durationMs: number;
+    note: string;
+  }> = {},
+): void {
+  const runId = getTraceRunId();
+  if (!runId) return;
+
+  appendProxyTraceEvent(runId, {
+    seq: ctx.seq,
+    requestId: ctx.requestId,
+    type,
+    timestamp: new Date().toISOString(),
+    method: ctx.method,
+    path: ctx.path,
+    stream: ctx.stream,
+    model: ctx.model,
+    requestBytes: ctx.requestBytes,
+    ...extra,
+  });
+}
+
+function writeJsonResponse(res: ServerResponse, status: number, payload: unknown): void {
+  const body = JSON.stringify(payload);
+  res.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+  });
+  res.end(body);
+}
+
+function getTraceDashboardLanguage(): TraceDashboardLanguage {
+  return config.uiLanguage === "zh-CN" || config.uiLanguage === "zh-TW" ? "zh-CN" : "en";
+}
+
 // ── 核心处理 ─────────────────────────────────────────────────────────
 
 async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
   const path = url.pathname;
   const query = url.search;
+
+  if (req.method === "GET" && (path === "/__melu" || path === "/__melu/")) {
+    res.writeHead(200, {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    });
+    res.end(buildProxyTraceDashboardHtml(getTraceRunId() ?? "legacy", getTraceDashboardLanguage()));
+    return;
+  }
+
+  if (req.method === "GET" && path === "/__melu/events") {
+    writeJsonResponse(res, 200, {
+      runId: getTraceRunId() ?? "legacy",
+      generatedAt: new Date().toISOString(),
+      events: readProxyTraceEvents(getTraceRunId() ?? "legacy"),
+    });
+    return;
+  }
+
   const upstreamBase = config.upstreamAnthropic;
   const upstreamUrl = `${upstreamBase}${path}${query}`;
   const upstreamHeaders = buildUpstreamHeaders(req);
@@ -135,13 +231,21 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
   let bodyDict: Record<string, unknown> | null = null;
   let userText = "";
   let isStreaming = false;
+  let uploadRecorded = false;
+  const traceContext = isMessages ? createTraceContext(req.method ?? "POST", path, rawBody.length) : null;
 
   if (isMessages && rawBody.length > 0) {
     try {
       bodyDict = JSON.parse(rawBody.toString("utf-8"));
-      const messages = bodyDict!.messages as Array<{ role: string; content: unknown }>;
       isStreaming = bodyDict!.stream === true;
+      if (traceContext) {
+        traceContext.stream = isStreaming;
+        traceContext.model = typeof bodyDict!.model === "string" ? bodyDict!.model : null;
+        recordTraceEvent(traceContext, "upload");
+        uploadRecorded = true;
+      }
 
+      const messages = bodyDict!.messages as Array<{ role: string; content: unknown }>;
       userText = extractUserText(messages);
       console.log(`[Melu:DEBUG] userText 长度: ${userText.length}, 前200字: ${userText.slice(0, 200)}`);
 
@@ -179,8 +283,8 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       console.log(`[Melu] 请求模型: ${model || "(empty)"}`);
 
       const forwarded = isStreaming
-        ? await handleStreaming(upstreamUrl, upstreamHeaders, newBody, res)
-        : await handleNormal(req.method ?? "POST", upstreamUrl, upstreamHeaders, newBody, res);
+        ? await handleStreaming(upstreamUrl, upstreamHeaders, newBody, res, traceContext)
+        : await handleNormal(req.method ?? "POST", upstreamUrl, upstreamHeaders, newBody, res, traceContext);
 
       if (forwarded && userText && userText.trim().length > 4) {
         const textHash = hashText(userText);
@@ -202,8 +306,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
     }
   }
 
+  if (traceContext && !uploadRecorded) {
+    recordTraceEvent(traceContext, "upload");
+  }
+
   // 非 messages 请求或解析失败，原样转发
-  await handleNormal(req.method ?? "GET", upstreamUrl, upstreamHeaders, rawBody, res);
+  await handleNormal(req.method ?? "GET", upstreamUrl, upstreamHeaders, rawBody, res, traceContext);
 }
 
 async function handleNormal(
@@ -212,6 +320,7 @@ async function handleNormal(
   headers: Record<string, string>,
   body: Buffer | string,
   res: ServerResponse,
+  traceContext?: ProxyTraceRequestContext | null,
 ): Promise<boolean> {
   try {
     const resp = await fetch(url, {
@@ -219,6 +328,9 @@ async function handleNormal(
       headers,
       body: method !== "GET" && method !== "HEAD" ? (typeof body === "string" ? body : new Uint8Array(body)) : undefined,
     });
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_start", { status: resp.status });
+    }
 
     res.writeHead(resp.status, Object.fromEntries(
       [...resp.headers.entries()].filter(([k]) =>
@@ -226,12 +338,14 @@ async function handleNormal(
       )
     ));
 
+    let responseBytes = 0;
     if (resp.body) {
       const reader = resp.body.getReader();
       const pump = async () => {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          responseBytes += value.byteLength;
           res.write(value);
         }
         res.end();
@@ -239,11 +353,25 @@ async function handleNormal(
       await pump();
     } else {
       const buffer = await resp.arrayBuffer();
+      responseBytes = buffer.byteLength;
       res.end(Buffer.from(buffer));
+    }
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_end", {
+        status: resp.status,
+        responseBytes,
+        durationMs: Date.now() - traceContext.startedAt,
+      });
     }
     return resp.ok;
   } catch (e) {
     console.error("[Melu] 转发失败:", e);
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_error", {
+        durationMs: Date.now() - traceContext.startedAt,
+        note: e instanceof Error ? e.message : String(e),
+      });
+    }
     res.writeHead(502);
     res.end("Melu proxy error");
     return false;
@@ -255,6 +383,7 @@ async function handleStreaming(
   headers: Record<string, string>,
   body: string,
   res: ServerResponse,
+  traceContext?: ProxyTraceRequestContext | null,
 ): Promise<boolean> {
   try {
     const resp = await fetch(url, {
@@ -262,6 +391,9 @@ async function handleStreaming(
       headers,
       body,
     });
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_start", { status: resp.status });
+    }
 
     // 透传响应头
     res.writeHead(resp.status, {
@@ -271,20 +403,35 @@ async function handleStreaming(
       "x-accel-buffering": "no",
     });
 
+    let responseBytes = 0;
     if (resp.body) {
       const reader = resp.body.getReader();
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        responseBytes += value.byteLength;
         res.write(value);
       }
     }
 
     res.end();
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_end", {
+        status: resp.status,
+        responseBytes,
+        durationMs: Date.now() - traceContext.startedAt,
+      });
+    }
     return resp.ok;
   } catch (e) {
     console.error("[Melu] Streaming 转发失败:", e);
+    if (traceContext) {
+      recordTraceEvent(traceContext, "receive_error", {
+        durationMs: Date.now() - traceContext.startedAt,
+        note: e instanceof Error ? e.message : String(e),
+      });
+    }
     if (!res.headersSent) {
       res.writeHead(502);
     }
@@ -309,6 +456,7 @@ export function startProxy(
   const memPath = getMemoryPath(memoryName ?? config.defaultMemory);
   activeMemoryPath = memPath;
   didLogEmbedderFallback = false;
+  traceSequence = 0;
 
   store = new MemoryStore(memPath);
   store.open();

@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #FBF9F6;
+            color: #1b1c1a;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .font-serif {
+            font-family: 'Newsreader', serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .paper-card {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .glow-dot {
+            box-shadow: 0 0 8px currentColor;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#532aa8",
+                        "on-primary": "#ffffff",
+                        "secondary": "#735c00",
+                        "surface": "#FBF9F6",
+                        "surface-variant": "#f5f3f0",
+                        "on-surface": "#1b1c1a",
+                        "on-surface-variant": "#57534e",
+                        "outline": "#e5e7eb",
+                        "outline-variant": "#d6d3d1",
+                    },
+                    fontFamily: {
+                        "headline": ["Newsreader", "serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "mono": ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "Liberation Mono", "Courier New", "monospace"],
+                    },
+                    borderRadius: {"DEFAULT": "2px", "lg": "4px", "xl": "6px", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary/20 selection:text-primary">
+<!-- SideNavBar (from COMPONENTS_8) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#f5f3f0] flex flex-col py-12 px-8 space-y-8 z-40 hidden md:flex">
+<div class="space-y-1">
+<div class="font-serif text-xl text-[#1b1c1a]">Editorial</div>
+<div class="font-sans text-[11px] font-semibold tracking-tighter text-stone-500 uppercase">Observability v2.4</div>
+</div>
+<nav class="flex-1 space-y-6">
+<a class="flex items-center gap-3 text-[#532aa8] font-bold group" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="dashboard">dashboard</span>
+<span class="font-sans text-[11px] tracking-tighter uppercase transition-transform duration-200 group-hover:translate-x-1">OVERVIEW</span>
+</a>
+<a class="flex items-center gap-3 text-stone-500 hover:text-[#532aa8] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="terminal">terminal</span>
+<span class="font-sans text-[11px] tracking-tighter uppercase transition-transform duration-200 group-hover:translate-x-1">TERMINALS</span>
+</a>
+<a class="flex items-center gap-3 text-stone-500 hover:text-[#532aa8] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="account_tree">account_tree</span>
+<span class="font-sans text-[11px] tracking-tighter uppercase transition-transform duration-200 group-hover:translate-x-1">AGENT_TREE</span>
+</a>
+</nav>
+<div class="mt-auto space-y-6">
+<a class="flex items-center gap-3 text-stone-500 hover:text-[#532aa8] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="settings">settings</span>
+<span class="font-sans text-[11px] tracking-tighter uppercase transition-transform duration-200 group-hover:translate-x-1">SETTINGS</span>
+</a>
+<a class="flex items-center gap-3 text-stone-500 hover:text-[#532aa8] transition-all group" href="#">
+<span class="material-symbols-outlined text-lg" data-icon="help">help</span>
+<span class="font-sans text-[11px] tracking-tighter uppercase transition-transform duration-200 group-hover:translate-x-1">HELP</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar (from COMPONENTS_8) -->
+<header class="flex justify-between items-center w-full px-16 h-20 fixed top-0 left-0 bg-[#fbf9f6] z-50 md:pl-[320px]">
+<div class="flex items-center gap-12">
+<div class="font-serif italic text-2xl text-[#1b1c1a]">The Editorial Dashboard</div>
+<nav class="hidden md:flex items-center gap-6">
+<span class="font-sans uppercase tracking-widest text-xs font-bold text-stone-500">RUN_7241</span>
+<span class="font-sans uppercase tracking-widest text-xs font-bold text-[#532aa8] border-b-2 border-[#532aa8] pb-1">STATUS_LIVE</span>
+<span class="font-sans uppercase tracking-widest text-xs font-bold text-stone-500">0.02ms_LATENCY</span>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-stone-500 hover:text-[#532aa8] transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="refresh">refresh</span>
+</button>
+<button class="p-2 text-stone-500 hover:text-[#532aa8] transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<button class="p-2 text-stone-500 hover:text-[#532aa8] transition-all active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="md:ml-64 pt-20 pb-16 px-16 max-w-7xl mx-auto">
+<!-- Session Header -->
+<section class="mt-8 bg-white border border-stone-200 flex flex-wrap items-center divide-x divide-stone-100">
+<div class="px-6 py-4 flex items-center gap-2">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">RUN_ID</span>
+<span class="text-xs font-mono font-bold text-primary">RUN_7241</span>
+</div>
+<div class="px-6 py-4 flex items-center gap-2">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">COMMAND</span>
+<code class="text-xs font-mono bg-stone-50 px-2 py-1 text-stone-600 border border-stone-100">melu run my_agent</code>
+</div>
+<div class="px-6 py-4 flex items-center gap-2">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">CWD</span>
+<span class="text-xs font-mono text-stone-500">/usr/bin/agent_obs</span>
+</div>
+<div class="px-6 py-4 flex items-center gap-2 ml-auto">
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500 glow-dot"></div>
+<span class="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">STATUS_LIVE</span>
+</div>
+<div class="px-6 py-4 flex items-center gap-2">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-widest">START</span>
+<span class="text-xs font-mono text-stone-800">14:02:15</span>
+</div>
+</section>
+<!-- Overview Cards -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+<!-- Card 1 -->
+<div class="bg-white p-6 border border-stone-200 hover:border-primary/30 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Total Requests</span>
+<span class="material-symbols-outlined text-primary text-sm" data-icon="database">database</span>
+</div>
+<div class="text-4xl font-headline font-medium text-stone-900">142</div>
+<div class="mt-4 text-[10px] font-mono text-stone-400 flex gap-4">
+<span class="flex items-center gap-1">↑ 1.2MB</span>
+<span class="flex items-center gap-1">↓ 4.8MB</span>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-white p-6 border border-stone-200 hover:border-[#735c00]/30 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">In-flight</span>
+<span class="w-2 h-2 bg-[#735c00] rounded-full animate-pulse"></span>
+</div>
+<div class="text-4xl font-headline font-medium text-[#735c00]">3</div>
+<div class="mt-4 text-[10px] font-mono text-stone-400">ACTIVE_SESSION_QUEUE</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-white p-6 border border-stone-200 hover:border-emerald-200 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Success Rate</span>
+<span class="material-symbols-outlined text-emerald-500 text-sm" data-icon="check_circle">check_circle</span>
+</div>
+<div class="text-4xl font-headline font-medium text-stone-900">98%</div>
+<div class="mt-4 text-[10px] font-mono text-stone-400 flex gap-4">
+<span>UP: 138</span>
+<span>END: 135</span>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-white p-6 border border-stone-200 hover:border-stone-300 transition-colors">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Latency</span>
+<span class="material-symbols-outlined text-stone-400 text-sm" data-icon="timer">timer</span>
+</div>
+<div class="flex items-baseline gap-2">
+<div class="text-4xl font-headline font-medium text-stone-900">1.2<span class="text-sm font-sans font-normal text-stone-400 ml-1">s</span></div>
+</div>
+<div class="mt-4 text-[10px] font-mono text-stone-400">P95: 3.4s</div>
+</div>
+</section>
+<!-- Main Timeline -->
+<section class="mt-8 bg-white border border-stone-200 relative overflow-hidden h-40">
+<div class="absolute inset-0 opacity-[0.03] pointer-events-none" style="background-image: linear-gradient(#1b1c1a 1px, transparent 1px), linear-gradient(90deg, #1b1c1a 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="flex items-center justify-between px-6 py-3 border-b border-stone-100 bg-stone-50/50">
+<span class="text-[10px] font-bold tracking-[0.15em] text-stone-400 uppercase">Stream Timeline (ms)</span>
+<span class="text-[10px] font-mono text-stone-400">T=0s → T=300s</span>
+</div>
+<div class="p-6 flex gap-1.5 overflow-x-auto no-scrollbar relative h-full items-end pb-8">
+<!-- Paper-styled Timeline Bars -->
+<div class="flex-none w-1.5 h-16 bg-primary/10 relative rounded-t-sm">
+<div class="absolute top-0 w-full h-3 bg-primary"></div>
+</div>
+<div class="flex-none w-1.5 h-24 bg-primary/5 rounded-t-sm"></div>
+<div class="flex-none w-2 h-10 bg-emerald-500/20 border-l border-emerald-500"></div>
+<div class="flex-none w-1.5 h-20 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-12 bg-red-100 border-t-2 border-red-400"></div>
+<div class="flex-none w-6 h-4 bg-stone-100 border-x border-stone-200"></div>
+<div class="flex-none w-1.5 h-28 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-32 bg-[#735c00]/10 border-t-2 border-[#735c00]"></div>
+<div class="flex-none w-12 h-[1px] bg-stone-200 mb-2"></div>
+<div class="flex-none w-1.5 h-16 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-24 bg-primary/5 rounded-t-sm"></div>
+<div class="flex-none w-2 h-10 bg-emerald-500/20 border-l border-emerald-500"></div>
+<div class="flex-none w-1.5 h-20 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-6 h-4 bg-stone-100 border-x border-stone-200"></div>
+<div class="flex-none w-1.5 h-28 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-24 bg-primary/5 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-32 bg-[#735c00]/10 border-t-2 border-[#735c00]"></div>
+<div class="flex-none w-12 h-[1px] bg-stone-200 mb-2"></div>
+<div class="flex-none w-1.5 h-16 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-20 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-1.5 h-24 bg-primary/5 rounded-t-sm"></div>
+<div class="flex-none w-2 h-10 bg-emerald-500/20 border-l border-emerald-500"></div>
+<div class="flex-none w-1.5 h-20 bg-primary/10 rounded-t-sm"></div>
+<div class="flex-none w-6 h-4 bg-stone-100 border-x border-stone-200"></div>
+</div>
+</section>
+<!-- Filter Bar -->
+<section class="mt-12 flex flex-wrap items-center justify-between gap-6">
+<div class="flex items-center gap-1">
+<button class="px-5 py-2 bg-primary text-white font-sans text-[10px] font-bold tracking-widest uppercase">All</button>
+<button class="px-5 py-2 bg-stone-100 text-stone-500 hover:bg-stone-200 font-sans text-[10px] font-bold tracking-widest uppercase transition-colors">In-flight</button>
+<button class="px-5 py-2 bg-stone-100 text-stone-500 hover:bg-stone-200 font-sans text-[10px] font-bold tracking-widest uppercase transition-colors">Error</button>
+<button class="px-5 py-2 bg-stone-100 text-stone-500 hover:bg-stone-200 font-sans text-[10px] font-bold tracking-widest uppercase transition-colors">LLM Only</button>
+</div>
+<div class="relative w-full md:w-80">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-stone-400 text-base" data-icon="search">search</span>
+<input class="w-full bg-white border border-stone-200 pl-11 pr-4 py-2.5 text-xs font-sans text-stone-900 placeholder:text-stone-300 focus:ring-0 focus:border-primary/50" placeholder="Search RequestID..." type="text"/>
+</div>
+</section>
+<!-- Request List Table -->
+<section class="mt-6 bg-white border border-stone-200 overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-stone-50 border-b border-stone-100">
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">SEQ</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">RequestID</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Agent</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Type</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Path</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Model</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] text-center">Stream</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em]">Status</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] text-right">Dur</th>
+<th class="px-6 py-4 text-[10px] font-bold text-stone-400 uppercase tracking-[0.2em] text-right">Bytes</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-stone-50">
+<tr class="hover:bg-stone-50 transition-colors cursor-pointer group">
+<td class="px-6 py-4 text-xs font-mono text-stone-400">001</td>
+<td class="px-6 py-4 text-xs font-mono text-primary font-semibold">req-492k-82</td>
+<td class="px-6 py-4"><span class="bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600 border border-stone-200 uppercase tracking-tighter">MAIN</span></td>
+<td class="px-6 py-4 text-[10px] font-bold text-stone-700 uppercase">LLM</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-500">/chat/completions</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-400">gpt-4o</td>
+<td class="px-6 py-4 text-center"><span class="text-emerald-600 text-[10px] font-bold uppercase">Yes</span></td>
+<td class="px-6 py-4"><span class="text-emerald-600 font-mono text-[10px] font-bold">200 OK</span></td>
+<td class="px-6 py-4 text-right font-mono text-xs text-stone-900">1.2s</td>
+<td class="px-6 py-4 text-right font-mono text-[10px] text-stone-400 uppercase">4.2K / 12.8K</td>
+</tr>
+<tr class="bg-stone-50/30 hover:bg-stone-50 transition-colors cursor-pointer group">
+<td class="px-6 py-4 text-xs font-mono text-stone-400">002</td>
+<td class="px-6 py-4 text-xs font-mono text-primary font-semibold">req-910a-14</td>
+<td class="px-6 py-4"><span class="bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600 border border-stone-200 uppercase tracking-tighter">MAIN</span></td>
+<td class="px-6 py-4 text-[10px] font-bold text-stone-700 uppercase">TOOL</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-500">/execute/python</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-400">--</td>
+<td class="px-6 py-4 text-center"><span class="text-stone-300 text-[10px] font-bold uppercase">No</span></td>
+<td class="px-6 py-4"><span class="text-emerald-600 font-mono text-[10px] font-bold">200 OK</span></td>
+<td class="px-6 py-4 text-right font-mono text-xs text-stone-900">0.4s</td>
+<td class="px-6 py-4 text-right font-mono text-[10px] text-stone-400 uppercase">0.8K / 1.2K</td>
+</tr>
+<tr class="bg-[#735c00]/5 hover:bg-stone-50 transition-colors cursor-pointer group">
+<td class="px-6 py-4 text-xs font-mono text-stone-400">003</td>
+<td class="px-6 py-4 text-xs font-mono text-[#735c00] font-semibold">req-829b-01</td>
+<td class="px-6 py-4"><span class="bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600 border border-stone-200 uppercase tracking-tighter">MAIN</span></td>
+<td class="px-6 py-4 text-[10px] font-bold text-stone-700 uppercase">LLM</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-500">/chat/completions</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-400">gpt-4o</td>
+<td class="px-6 py-4 text-center"><span class="text-[#735c00] text-[10px] font-bold uppercase animate-pulse">Stream</span></td>
+<td class="px-6 py-4"><span class="text-[#735c00] font-mono text-[10px] italic">PENDING...</span></td>
+<td class="px-6 py-4 text-right font-mono text-xs text-stone-900">3.4s</td>
+<td class="px-6 py-4 text-right font-mono text-[10px] text-stone-400 uppercase">2.1K / --</td>
+</tr>
+<tr class="hover:bg-stone-50 transition-colors cursor-pointer group">
+<td class="px-6 py-4 text-xs font-mono text-stone-400">004</td>
+<td class="px-6 py-4 text-xs font-mono text-primary font-semibold">req-210c-55</td>
+<td class="px-6 py-4"><span class="bg-stone-100 px-2 py-0.5 text-[9px] font-bold text-stone-600 border border-stone-200 uppercase tracking-tighter">MAIN</span></td>
+<td class="px-6 py-4 text-[10px] font-bold text-stone-700 uppercase">LLM</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-500">/chat/completions</td>
+<td class="px-6 py-4 text-xs font-mono text-stone-400">gpt-3.5-turbo</td>
+<td class="px-6 py-4 text-center"><span class="text-emerald-600 text-[10px] font-bold uppercase">Yes</span></td>
+<td class="px-6 py-4"><span class="text-red-500 font-mono text-[10px] font-bold uppercase">500 ERR</span></td>
+<td class="px-6 py-4 text-right font-mono text-xs text-stone-900">0.2s</td>
+<td class="px-6 py-4 text-right font-mono text-[10px] text-stone-400 uppercase">0.1K / 0.5K</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- Footer (from COMPONENTS_8) -->
+<footer class="flex justify-between items-center w-full px-16 py-4 fixed bottom-0 left-0 z-40 bg-[#fbf9f6] border-t border-stone-200/50">
+<div class="font-sans text-[10px] uppercase tracking-widest text-stone-400">
+        REFRESH_TIME: 14:02:11 | PATH: /usr/bin/agent_obs | ENCRYPTION: AES-256
+    </div>
+<div class="flex gap-8">
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline" href="#">PRIVACY_WARNING</a>
+<a class="font-sans text-[10px] uppercase tracking-widest text-stone-400 hover:text-stone-600 underline" href="#">SYSTEM_LOGS</a>
+</div>
+</footer>
+</body></html>
