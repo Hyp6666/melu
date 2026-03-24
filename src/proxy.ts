@@ -21,6 +21,9 @@ import {
   buildProxyTraceDashboardHtml,
   readProxyTraceEvents,
   type TraceDashboardLanguage,
+  type ProxyTracePromptMessage,
+  type ProxyTracePromptSnapshot,
+  type ProxyTraceToolCall,
 } from "./trace.js";
 
 let store: MemoryStore | null = null;
@@ -47,6 +50,16 @@ interface ResponseUsageSummary {
   inputTokens?: number;
   outputTokens?: number;
 }
+
+interface StreamingToolAccumulator {
+  id: string | null;
+  name: string;
+  kind: string;
+  inputBuffer: string;
+  inputValue: unknown;
+}
+
+const MAX_TRACE_RAW_REQUEST_CHARS = 200_000;
 
 function hashText(text: string): string {
   return createHash("sha256").update(text).digest("hex").slice(0, 16);
@@ -131,6 +144,146 @@ function injectMemoriesIntoBody(body: Record<string, unknown>, memoryText: strin
   }
 }
 
+function stringifyTraceRequestBody(body: Record<string, unknown>): { rawRequestBody: string; rawRequestTruncated: boolean } {
+  const raw = JSON.stringify(body, null, 2);
+  if (raw.length <= MAX_TRACE_RAW_REQUEST_CHARS) {
+    return { rawRequestBody: raw, rawRequestTruncated: false };
+  }
+  return {
+    rawRequestBody:
+      raw.slice(0, MAX_TRACE_RAW_REQUEST_CHARS) +
+      "\n/* melu trace truncated the raw request body for local dashboard rendering */",
+    rawRequestTruncated: true,
+  };
+}
+
+function snapshotSystemBlocks(system: unknown): ProxyTracePromptSnapshot["systemBlocks"] {
+  if (typeof system === "string") {
+    return [{ index: 0, type: "text", text: system }];
+  }
+
+  if (!Array.isArray(system)) {
+    return [];
+  }
+
+  return system.map((block, index) => {
+    if (typeof block === "string") {
+      return { index, type: "text", text: block };
+    }
+
+    if (block && typeof block === "object") {
+      const record = block as Record<string, unknown>;
+      if (typeof record.text === "string") {
+        return {
+          index,
+          type: typeof record.type === "string" ? record.type : "text",
+          text: record.text,
+        };
+      }
+      return {
+        index,
+        type: typeof record.type === "string" ? record.type : "object",
+        text: JSON.stringify(record, null, 2),
+      };
+    }
+
+    return { index, type: typeof block, text: String(block) };
+  });
+}
+
+function snapshotPromptMessages(messages: unknown): ProxyTracePromptMessage[] {
+  if (!Array.isArray(messages)) return [];
+
+  return messages.map((message, index) => {
+    if (!message || typeof message !== "object") {
+      return {
+        index,
+        role: "unknown",
+        contentTypes: [],
+        text: "",
+        toolResultOnly: false,
+      };
+    }
+
+    const record = message as Record<string, unknown>;
+    const role = typeof record.role === "string" ? record.role : "unknown";
+    const content = record.content;
+
+    if (typeof content === "string") {
+      return {
+        index,
+        role,
+        contentTypes: ["text"],
+        text: content,
+        toolResultOnly: false,
+      };
+    }
+
+    if (!Array.isArray(content)) {
+      return {
+        index,
+        role,
+        contentTypes: [],
+        text: "",
+        toolResultOnly: false,
+      };
+    }
+
+    const contentTypes: string[] = [];
+    const textParts: string[] = [];
+
+    for (const block of content) {
+      if (!block || typeof block !== "object") continue;
+      const blockRecord = block as Record<string, unknown>;
+      const blockType = typeof blockRecord.type === "string" ? blockRecord.type : "unknown";
+      contentTypes.push(blockType);
+      if (blockType === "text" && typeof blockRecord.text === "string") {
+        textParts.push(blockRecord.text);
+      }
+    }
+
+    return {
+      index,
+      role,
+      contentTypes,
+      text: textParts.join("\n"),
+      toolResultOnly: isToolResultOnly(content),
+    };
+  });
+}
+
+function buildPromptSnapshot(body: Record<string, unknown>): ProxyTracePromptSnapshot {
+  const raw = stringifyTraceRequestBody(body);
+  return {
+    systemBlocks: snapshotSystemBlocks(body.system),
+    messages: snapshotPromptMessages(body.messages),
+    rawRequestBody: raw.rawRequestBody,
+    rawRequestTruncated: raw.rawRequestTruncated,
+  };
+}
+
+function extractToolCallsFromContentBlocks(content: unknown): ProxyTraceToolCall[] {
+  if (!Array.isArray(content)) return [];
+
+  const toolCalls: ProxyTraceToolCall[] = [];
+  for (const block of content) {
+    if (!block || typeof block !== "object") continue;
+    const record = block as Record<string, unknown>;
+    const blockType = typeof record.type === "string" ? record.type : "";
+    if (blockType !== "tool_use" && blockType !== "server_tool_use") continue;
+    if (typeof record.name !== "string" || record.name.trim() === "") continue;
+
+    toolCalls.push({
+      id: typeof record.id === "string" ? record.id : null,
+      name: record.name,
+      kind: blockType,
+      input: "input" in record ? record.input : undefined,
+    });
+  }
+
+  return toolCalls;
+}
+
 async function readBody(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const chunk of req) {
@@ -168,6 +321,8 @@ function recordTraceEvent(
     inputTokens: number;
     outputTokens: number;
     note: string;
+    promptSnapshot: ProxyTracePromptSnapshot;
+    toolCalls: ProxyTraceToolCall[];
   }> = {},
 ): void {
   const runId = getTraceRunId();
@@ -209,6 +364,12 @@ function extractUsageFromMessageJson(payload: unknown): ResponseUsageSummary {
   return {};
 }
 
+function extractToolCallsFromMessageJson(payload: unknown): ProxyTraceToolCall[] {
+  if (!payload || typeof payload !== "object") return [];
+  const record = payload as Record<string, unknown>;
+  return extractToolCallsFromContentBlocks(record.content);
+}
+
 function applyUsageFromSsePayload(target: ResponseUsageSummary, payload: unknown): void {
   if (!payload || typeof payload !== "object") return;
   const record = payload as Record<string, unknown>;
@@ -232,7 +393,83 @@ function applyUsageFromSsePayload(target: ResponseUsageSummary, payload: unknown
   }
 }
 
-function consumeSseUsage(buffer: string, usage: ResponseUsageSummary): string {
+function maybeParseJson(text: string): unknown {
+  if (!text.trim()) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function appendStreamingToolCalls(target: ProxyTraceToolCall[], toolsByIndex: Map<number, StreamingToolAccumulator>): void {
+  for (const [, tool] of toolsByIndex) {
+    target.push({
+      id: tool.id,
+      name: tool.name,
+      kind: tool.kind,
+      input: tool.inputBuffer.trim() ? maybeParseJson(tool.inputBuffer) : tool.inputValue,
+    });
+  }
+}
+
+function applyToolDataFromSsePayload(
+  toolsByIndex: Map<number, StreamingToolAccumulator>,
+  completedTools: ProxyTraceToolCall[],
+  payload: unknown,
+): void {
+  if (!payload || typeof payload !== "object") return;
+  const record = payload as Record<string, unknown>;
+  const index = typeof record.index === "number" ? record.index : null;
+  if (index === null) return;
+
+  if (record.type === "content_block_start" && record.content_block && typeof record.content_block === "object") {
+    const block = record.content_block as Record<string, unknown>;
+    const blockType = typeof block.type === "string" ? block.type : "";
+    if (blockType !== "tool_use" && blockType !== "server_tool_use") return;
+    toolsByIndex.set(index, {
+      id: typeof block.id === "string" ? block.id : null,
+      name: typeof block.name === "string" ? block.name : "(unknown tool)",
+      kind: blockType,
+      inputBuffer:
+        block.input && typeof block.input === "object" && Object.keys(block.input as Record<string, unknown>).length > 0
+          ? JSON.stringify(block.input)
+          : "",
+      inputValue: "input" in block ? block.input : undefined,
+    });
+    return;
+  }
+
+  if (record.type === "content_block_delta" && record.delta && typeof record.delta === "object") {
+    const delta = record.delta as Record<string, unknown>;
+    if (delta.type !== "input_json_delta") return;
+    const tool = toolsByIndex.get(index);
+    if (!tool) return;
+    if (typeof delta.partial_json === "string") {
+      tool.inputBuffer += delta.partial_json;
+    }
+    return;
+  }
+
+  if (record.type === "content_block_stop") {
+    const tool = toolsByIndex.get(index);
+    if (!tool) return;
+    completedTools.push({
+      id: tool.id,
+      name: tool.name,
+      kind: tool.kind,
+      input: tool.inputBuffer.trim() ? maybeParseJson(tool.inputBuffer) : tool.inputValue,
+    });
+    toolsByIndex.delete(index);
+  }
+}
+
+function consumeSseMetadata(
+  buffer: string,
+  usage: ResponseUsageSummary,
+  toolsByIndex?: Map<number, StreamingToolAccumulator>,
+  completedTools?: ProxyTraceToolCall[],
+): string {
   let remaining = buffer;
   while (true) {
     const boundary = remaining.indexOf("\n\n");
@@ -250,7 +487,11 @@ function consumeSseUsage(buffer: string, usage: ResponseUsageSummary): string {
     if (dataText === "[DONE]") continue;
 
     try {
-      applyUsageFromSsePayload(usage, JSON.parse(dataText));
+      const payload = JSON.parse(dataText);
+      applyUsageFromSsePayload(usage, payload);
+      if (toolsByIndex && completedTools) {
+        applyToolDataFromSsePayload(toolsByIndex, completedTools, payload);
+      }
     } catch {
       // ignore non-JSON SSE payloads
     }
@@ -319,8 +560,6 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       if (traceContext) {
         traceContext.stream = isStreaming;
         traceContext.model = typeof bodyDict!.model === "string" ? bodyDict!.model : null;
-        recordTraceEvent(traceContext, "upload");
-        uploadRecorded = true;
       }
 
       const messages = bodyDict!.messages as Array<{ role: string; content: unknown }>;
@@ -355,6 +594,11 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise
       }
 
       // 重新序列化
+      const promptSnapshot = buildPromptSnapshot(bodyDict!);
+      if (traceContext) {
+        recordTraceEvent(traceContext, "upload", { promptSnapshot });
+        uploadRecorded = true;
+      }
       const newBody = JSON.stringify(bodyDict);
       upstreamHeaders["content-length"] = String(Buffer.byteLength(newBody));
       const model = (bodyDict!.model as string) ?? "";
@@ -418,15 +662,19 @@ async function handleNormal(
 
     let responseBytes = 0;
     let usage: ResponseUsageSummary = {};
+    let toolCalls: ProxyTraceToolCall[] = [];
     const contentType = resp.headers.get("content-type")?.toLowerCase() ?? "";
 
     if (traceContext && contentType.includes("application/json")) {
       const buffer = Buffer.from(await resp.arrayBuffer());
       responseBytes = buffer.byteLength;
       try {
-        usage = extractUsageFromMessageJson(JSON.parse(buffer.toString("utf-8")));
+        const payload = JSON.parse(buffer.toString("utf-8"));
+        usage = extractUsageFromMessageJson(payload);
+        toolCalls = extractToolCallsFromMessageJson(payload);
       } catch {
         usage = {};
+        toolCalls = [];
       }
       res.end(buffer);
     } else if (resp.body) {
@@ -452,6 +700,7 @@ async function handleNormal(
         responseBytes,
         durationMs: Date.now() - traceContext.startedAt,
         ...usage,
+        ...(toolCalls.length ? { toolCalls } : {}),
       });
     }
     return resp.ok;
@@ -496,6 +745,8 @@ async function handleStreaming(
 
     let responseBytes = 0;
     const usage: ResponseUsageSummary = {};
+    const toolCalls: ProxyTraceToolCall[] = [];
+    const toolsByIndex = new Map<number, StreamingToolAccumulator>();
     if (resp.body) {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -506,11 +757,12 @@ async function handleStreaming(
         if (done) break;
         responseBytes += value.byteLength;
         sseBuffer += decoder.decode(value, { stream: true });
-        sseBuffer = consumeSseUsage(sseBuffer, usage);
+        sseBuffer = consumeSseMetadata(sseBuffer, usage, toolsByIndex, toolCalls);
         res.write(value);
       }
       sseBuffer += decoder.decode();
-      consumeSseUsage(sseBuffer, usage);
+      consumeSseMetadata(sseBuffer, usage, toolsByIndex, toolCalls);
+      appendStreamingToolCalls(toolCalls, toolsByIndex);
     }
 
     res.end();
@@ -520,6 +772,7 @@ async function handleStreaming(
         responseBytes,
         durationMs: Date.now() - traceContext.startedAt,
         ...usage,
+        ...(toolCalls.length ? { toolCalls } : {}),
       });
     }
     return resp.ok;

@@ -408,29 +408,38 @@ export class MemoryStore {
 
 // ── 格式化 ───────────────────────────────────────────────────────────
 
+function escapeXmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 export function formatMemoriesForInjection(memories: Memory[]): string {
   if (memories.length === 0) return "";
 
-  const lines = ["\n\n[User Memory - Provided by Melu]"];
-  let usedChars = lines[0].length;
+  const entries: string[] = [];
+  let usedChars = "\n\n<melu-memory>\n</melu-memory>".length;
 
   for (const m of memories.slice(0, MAX_INJECTION_MEMORIES)) {
     const content = truncateCharacters(normalizeWhitespace(m.content || m.summary), 500);
     if (content === "") continue;
 
     const timestamp = (m.updatedAt || m.createdAt || "").slice(0, 16);
-    const line = `- ${timestamp} user says: ${content}`;
-    if (usedChars + line.length > MAX_INJECTION_CHARS) {
+    const line = `  <entry timestamp="${escapeXmlText(timestamp)}">${escapeXmlText(content)}</entry>`;
+    if (usedChars + line.length + 1 > MAX_INJECTION_CHARS) {
       break;
     }
 
-    lines.push(line);
+    entries.push(line);
     usedChars += line.length + 1;
   }
 
-  if (lines.length === 1) {
+  if (entries.length === 0) {
     return "";
   }
 
-  return lines.join("\n");
+  return `\n\n<melu-memory>\n${entries.join("\n")}\n</melu-memory>`;
 }

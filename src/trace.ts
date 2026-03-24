@@ -8,6 +8,34 @@ const DASHBOARD_MAX_EVENTS = 200;
 export type TraceDashboardLanguage = "en" | "zh-CN";
 export type ProxyTraceEventType = "upload" | "receive_start" | "receive_end" | "receive_error";
 
+export interface ProxyTracePromptSystemBlock {
+  index: number;
+  type: string;
+  text: string;
+}
+
+export interface ProxyTracePromptMessage {
+  index: number;
+  role: string;
+  contentTypes: string[];
+  text: string;
+  toolResultOnly: boolean;
+}
+
+export interface ProxyTracePromptSnapshot {
+  systemBlocks: ProxyTracePromptSystemBlock[];
+  messages: ProxyTracePromptMessage[];
+  rawRequestBody: string;
+  rawRequestTruncated?: boolean;
+}
+
+export interface ProxyTraceToolCall {
+  id?: string | null;
+  name: string;
+  kind: string;
+  input?: unknown;
+}
+
 export interface ProxyTraceEvent {
   seq: number;
   requestId: string;
@@ -24,6 +52,8 @@ export interface ProxyTraceEvent {
   inputTokens?: number;
   outputTokens?: number;
   note?: string;
+  promptSnapshot?: ProxyTracePromptSnapshot;
+  toolCalls?: ProxyTraceToolCall[];
 }
 
 interface DashboardCopy {
@@ -135,6 +165,34 @@ interface DashboardCopy {
   disconnectedStatus: string;
   offlineSnapshot: string;
   timelineLegend: string;
+  promptInsightTitle: string;
+  promptStructureTitle: string;
+  promptBlocksTitle: string;
+  messageFlowTitle: string;
+  rawPromptTitle: string;
+  rawPromptAction: string;
+  rawToolInputAction: string;
+  noPromptSnapshot: string;
+  noToolActivity: string;
+  rawPromptTruncatedNotice: string;
+  systemBlockLabel: string;
+  messageLabel: string;
+  headingCountLabel: string;
+  xmlTagLabel: string;
+  contentTypesLabel: string;
+  toolInsightTitle: string;
+  toolNativeDescriptionLabel: string;
+  toolCategoryFiles: string;
+  toolCategorySearch: string;
+  toolCategoryExecution: string;
+  toolCategoryNetwork: string;
+  toolCategoryCollaboration: string;
+  toolCategoryPlanning: string;
+  toolCategorySkill: string;
+  toolCategoryUnknown: string;
+  promptMessagePreviewLabel: string;
+  rawRequestPayloadLabel: string;
+  rawToolInputLabel: string;
 }
 
 const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
@@ -247,6 +305,34 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     disconnectedStatus: "Disconnected",
     offlineSnapshot: "Offline snapshot",
     timelineLegend: "Height = request duration (seconds, scaled relatively) · Color = model",
+    promptInsightTitle: "Prompt Insight",
+    promptStructureTitle: "Structured Summary",
+    promptBlocksTitle: "System Blocks",
+    messageFlowTitle: "Message Flow",
+    rawPromptTitle: "Raw Prompt",
+    rawPromptAction: "Open final raw payload",
+    rawToolInputAction: "Open raw tool input",
+    noPromptSnapshot: "No prompt snapshot was captured for this request.",
+    noToolActivity: "No tool use was captured for this request.",
+    rawPromptTruncatedNotice: "The raw payload was truncated locally for dashboard rendering.",
+    systemBlockLabel: "system",
+    messageLabel: "message",
+    headingCountLabel: "headings",
+    xmlTagLabel: "XML tags",
+    contentTypesLabel: "Content types",
+    toolInsightTitle: "Tool Activity",
+    toolNativeDescriptionLabel: "Native description",
+    toolCategoryFiles: "Files",
+    toolCategorySearch: "Search",
+    toolCategoryExecution: "Execution",
+    toolCategoryNetwork: "Network",
+    toolCategoryCollaboration: "Collaboration",
+    toolCategoryPlanning: "Planning",
+    toolCategorySkill: "Skill",
+    toolCategoryUnknown: "Tool",
+    promptMessagePreviewLabel: "Preview",
+    rawRequestPayloadLabel: "Raw request payload",
+    rawToolInputLabel: "Raw tool input",
   },
   "zh-CN": {
     pageTitle: "Melu Trace",
@@ -357,6 +443,34 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     disconnectedStatus: "已断开",
     offlineSnapshot: "离线快照",
     timelineLegend: "柱高 = 请求耗时（按秒相对缩放） · 颜色 = 模型",
+    promptInsightTitle: "Prompt 透视",
+    promptStructureTitle: "结构化摘要",
+    promptBlocksTitle: "System Blocks",
+    messageFlowTitle: "消息结构",
+    rawPromptTitle: "原始 Prompt",
+    rawPromptAction: "展开最终原始载荷",
+    rawToolInputAction: "展开原始工具输入",
+    noPromptSnapshot: "这条请求没有捕获到 prompt 快照。",
+    noToolActivity: "这条请求没有捕获到工具调用。",
+    rawPromptTruncatedNotice: "原始载荷过长，已在本地仪表板里截断展示。",
+    systemBlockLabel: "system",
+    messageLabel: "消息",
+    headingCountLabel: "段标题",
+    xmlTagLabel: "XML 标签",
+    contentTypesLabel: "内容类型",
+    toolInsightTitle: "工具调用",
+    toolNativeDescriptionLabel: "原生说明",
+    toolCategoryFiles: "文件",
+    toolCategorySearch: "搜索",
+    toolCategoryExecution: "执行",
+    toolCategoryNetwork: "网络",
+    toolCategoryCollaboration: "协作",
+    toolCategoryPlanning: "规划",
+    toolCategorySkill: "技能",
+    toolCategoryUnknown: "工具",
+    promptMessagePreviewLabel: "预览",
+    rawRequestPayloadLabel: "原始请求载荷",
+    rawToolInputLabel: "原始工具输入",
   },
 };
 
@@ -1254,7 +1368,7 @@ export function buildProxyTraceDashboardHtml(
     .drawer-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(20, 16, 12, 0.08);
+      background: rgba(20, 16, 12, 0.1);
       opacity: 0;
       z-index: 60;
       transition: opacity 220ms ease;
@@ -1266,27 +1380,31 @@ export function buildProxyTraceDashboardHtml(
 
     .drawer {
       position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: min(540px, 100vw);
+      top: clamp(22px, 5vh, 42px);
+      left: 50%;
+      bottom: clamp(22px, 5vh, 42px);
+      width: min(1120px, calc(100vw - 88px));
       background: rgba(251, 249, 246, 0.98);
-      border-left: 1px solid var(--line);
-      box-shadow: -20px 0 50px rgba(35, 29, 23, 0.12);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      box-shadow: 0 24px 80px rgba(35, 29, 23, 0.18);
       z-index: 70;
       display: flex;
       flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 220ms ease;
+      transform: translate(-50%, 18px) scale(0.985);
+      opacity: 0;
+      transition: transform 220ms ease, opacity 220ms ease;
       backdrop-filter: blur(14px);
+      overflow: hidden;
     }
 
     .drawer.is-open {
-      transform: translateX(0);
+      transform: translate(-50%, 0) scale(1);
+      opacity: 1;
     }
 
     .drawer-head {
-      padding: 20px 22px;
+      padding: 22px 26px;
       border-bottom: 1px solid var(--line);
       display: flex;
       align-items: center;
@@ -1323,8 +1441,9 @@ export function buildProxyTraceDashboardHtml(
     .drawer-body {
       flex: 1;
       overflow: auto;
-      padding: 22px;
+      padding: 24px;
       display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 24px;
     }
 
@@ -1333,6 +1452,10 @@ export function buildProxyTraceDashboardHtml(
       border: 1px solid var(--line);
       border-radius: 20px;
       padding: 20px;
+    }
+
+    .detail-section-wide {
+      grid-column: 1 / -1;
     }
 
     .detail-title {
@@ -1407,49 +1530,174 @@ export function buildProxyTraceDashboardHtml(
       word-break: break-word;
     }
 
-    .protected-panel {
+    .insight-stack,
+    .tool-stack {
       display: grid;
-      place-items: center;
-      gap: 14px;
-      text-align: center;
-      padding: 30px 22px;
-      border: 1px dashed rgba(83, 42, 168, 0.18);
-      border-radius: 18px;
+      gap: 12px;
+    }
+
+    .insight-card,
+    .tool-card,
+    .raw-panel details {
+      border: 1px solid var(--line-soft);
+      border-radius: 16px;
       background: rgba(255, 255, 255, 0.58);
     }
 
-    .protected-lock {
-      width: 56px;
-      height: 56px;
-      border-radius: 999px;
-      display: grid;
-      place-items: center;
-      background: rgba(115, 92, 0, 0.08);
-      color: var(--secondary);
-      font-size: 26px;
-      font-weight: 700;
-      font-family: var(--serif);
-    }
-
-    .reserved-list {
+    .insight-card,
+    .tool-card {
+      padding: 14px 16px;
       display: grid;
       gap: 10px;
     }
 
-    .reserved-item {
+    .insight-head,
+    .tool-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .insight-title-row,
+    .tool-title-row {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .insight-title,
+    .tool-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.4;
+    }
+
+    .insight-subtitle,
+    .tool-summary {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
+      word-break: break-word;
+    }
+
+    .insight-tags,
+    .tool-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .insight-tag,
+    .tool-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(83, 42, 168, 0.08);
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .insight-tag.muted,
+    .tool-tag.muted {
+      background: rgba(23, 23, 23, 0.06);
+      color: var(--muted);
+    }
+
+    .insight-preview {
+      font-size: 11px;
+      line-height: 1.8;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(245, 241, 235, 0.52);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .raw-panel {
+      margin-top: 14px;
+    }
+
+    .raw-panel details {
+      overflow: hidden;
+    }
+
+    .raw-panel summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 14px 16px;
-      border-left: 3px solid rgba(83, 42, 168, 0.22);
-      background: rgba(255, 255, 255, 0.58);
-      border-radius: 12px;
+      gap: 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
     }
 
-    .reserved-item span:last-child {
+    .raw-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .raw-panel summary::after {
+      content: "+";
+      color: var(--primary);
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .raw-panel details[open] summary::after {
+      content: "−";
+    }
+
+    .raw-panel-body {
+      border-top: 1px solid var(--line-soft);
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .raw-note {
       color: var(--muted);
       font-size: 11px;
+      line-height: 1.7;
+      padding-top: 12px;
+    }
+
+    .raw-pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 12px;
+      background: rgba(23, 23, 23, 0.94);
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 11px;
+      line-height: 1.75;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono);
+    }
+
+    .tool-meta {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tool-empty,
+    .insight-empty {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px dashed rgba(83, 42, 168, 0.18);
+      background: rgba(255, 255, 255, 0.46);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
     }
 
     .footer {
@@ -1534,6 +1782,22 @@ export function buildProxyTraceDashboardHtml(
 
       .meta-grid {
         grid-template-columns: 1fr;
+      }
+
+      .drawer {
+        top: 10px;
+        bottom: 10px;
+        width: calc(100vw - 20px);
+        border-radius: 22px;
+      }
+
+      .drawer-body {
+        grid-template-columns: 1fr;
+        padding: 18px;
+      }
+
+      .detail-section-wide {
+        grid-column: auto;
       }
     }
   </style>
@@ -1761,23 +2025,15 @@ export function buildProxyTraceDashboardHtml(
         </div>
       </section>
 
-      <section class="detail-section">
-        <h3 class="detail-title">${copy.contentVisibility}</h3>
-        <div class="protected-panel">
-          <div class="protected-lock">M</div>
-          <div style="font-family:var(--serif);font-size:28px;line-height:1;letter-spacing:-0.03em;">${copy.protectedContentTitle}</div>
-          <div style="max-width:28ch;color:var(--muted);line-height:1.8;">${copy.protectedContentBody}</div>
-          <button class="action-chip" type="button">${copy.protectedContentAction}</button>
-        </div>
+      <section class="detail-section detail-section-wide">
+        <h3 class="detail-title">${copy.promptInsightTitle}</h3>
+        <div id="drawer-prompt-structure" class="insight-stack"></div>
+        <div id="drawer-raw-prompt" class="raw-panel"></div>
       </section>
 
-      <section class="detail-section">
-        <h3 class="detail-title">${copy.systemAnalysis}</h3>
-        <div class="reserved-list">
-          <div class="reserved-item"><span>${copy.reservedMemoryInjection}</span><span>${copy.reservedFuture}</span></div>
-          <div class="reserved-item"><span>${copy.reservedAgentLineage}</span><span>${copy.reservedFuture}</span></div>
-          <div class="reserved-item"><span>${copy.reservedPromptDetails}</span><span>${copy.reservedFuture}</span></div>
-        </div>
+      <section class="detail-section detail-section-wide">
+        <h3 class="detail-title">${copy.toolInsightTitle}</h3>
+        <div id="drawer-tool-activity" class="tool-stack"></div>
       </section>
     </div>
   </aside>
@@ -1839,6 +2095,9 @@ export function buildProxyTraceDashboardHtml(
       drawerResponseBytes: document.getElementById("drawer-response-bytes"),
       drawerEventType: document.getElementById("drawer-event-type"),
       drawerNote: document.getElementById("drawer-note"),
+      drawerPromptStructure: document.getElementById("drawer-prompt-structure"),
+      drawerRawPrompt: document.getElementById("drawer-raw-prompt"),
+      drawerToolActivity: document.getElementById("drawer-tool-activity"),
       refreshButton: document.getElementById("refresh-button"),
       searchInput: document.getElementById("search-input"),
       filterButtons: Array.from(document.querySelectorAll(".filter-button")),
@@ -1934,10 +2193,19 @@ export function buildProxyTraceDashboardHtml(
       return "generic";
     }
 
+    function modelDisplayLabel(model) {
+      const tone = modelTone(model);
+      if (tone === "haiku") return "haiku";
+      if (tone === "sonnet") return "sonnet";
+      if (tone === "opus") return "opus";
+      return truncatePreview(model || "--", 18);
+    }
+
     function renderModelChip(model) {
-      const label = model || "--";
-      const tone = modelTone(label);
-      return '<span class="model-chip ' + tone + '" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</span>';
+      const rawLabel = model || "--";
+      const tone = modelTone(rawLabel);
+      const displayLabel = modelDisplayLabel(rawLabel);
+      return '<span class="model-chip ' + tone + '" title="' + escapeHtml(rawLabel) + '">' + escapeHtml(displayLabel) + '</span>';
     }
 
     function totalUsage(request) {
@@ -1945,6 +2213,172 @@ export function buildProxyTraceDashboardHtml(
       const output = typeof request.outputTokens === "number" ? request.outputTokens : 0;
       if (!input && !output) return null;
       return input + output;
+    }
+
+    function truncatePreview(value, limit) {
+      const textValue = String(value || "");
+      if (textValue.length <= limit) return textValue;
+      return textValue.slice(0, limit) + "…";
+    }
+
+    function safeJson(value) {
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    }
+
+    function extractMarkdownHeadings(value) {
+      const headings = [];
+      const regex = /^# (.+)$/gm;
+      let match;
+      while ((match = regex.exec(String(value || "")))) {
+        headings.push(match[1].trim());
+      }
+      return headings;
+    }
+
+    function extractXmlTags(value) {
+      const tags = [];
+      const regex = /<([a-zA-Z0-9:_-]+)(?:\\s[^>]*)?>|<\\/([a-zA-Z0-9:_-]+)>/g;
+      const seen = new Set();
+      let match;
+      while ((match = regex.exec(String(value || "")))) {
+        const name = (match[1] || match[2] || "").trim();
+        if (!name || seen.has(name)) continue;
+        seen.add(name);
+        tags.push(name);
+      }
+      return tags;
+    }
+
+    function countMeluMemoryEntries(value) {
+      const matches = String(value || "").match(/<entry\\b/gi);
+      return matches ? matches.length : 0;
+    }
+
+    function inferSystemBlockTitle(block) {
+      if (!block || !block.text) {
+        return text.systemBlockLabel + "[" + String(block ? block.index : 0) + "]";
+      }
+      const raw = String(block.text);
+      if (raw.includes("<melu-memory>")) {
+        const count = countMeluMemoryEntries(raw);
+        return "Melu Memory" + (count ? " · " + count : "");
+      }
+      if (raw.includes("CLAUDE.md")) {
+        return "CLAUDE.md";
+      }
+      const headings = extractMarkdownHeadings(raw);
+      if (headings.length) {
+        return headings[0];
+      }
+      const firstLine = raw.split(/\\r?\\n/).map(function (line) { return line.trim(); }).find(Boolean);
+      if (firstLine) {
+        return truncatePreview(firstLine, 42);
+      }
+      return text.systemBlockLabel + "[" + String(block.index) + "]";
+    }
+
+    function toolCategory(toolName) {
+      const name = String(toolName || "");
+      if (/^(Read|Write|Edit|MultiEdit|NotebookEdit|NotebookRead|LS)$/i.test(name)) return text.toolCategoryFiles;
+      if (/^(Glob|Grep)$/i.test(name)) return text.toolCategorySearch;
+      if (/^(Bash)$/i.test(name)) return text.toolCategoryExecution;
+      if (/^(WebFetch|WebSearch)$/i.test(name)) return text.toolCategoryNetwork;
+      if (/^(Agent)$/i.test(name)) return text.toolCategoryCollaboration;
+      if (/^(TodoWrite|AskUserQuestion|ExitPlanMode)$/i.test(name)) return text.toolCategoryPlanning;
+      if (/^(Skill)$/i.test(name)) return text.toolCategorySkill;
+      if (/^mcp__/i.test(name)) return "MCP";
+      return text.toolCategoryUnknown;
+    }
+
+    function toolNativeDescription(tool) {
+      if (!tool || !tool.input || typeof tool.input !== "object") return "";
+      const input = tool.input;
+      if (typeof input.description === "string" && input.description.trim()) {
+        return input.description.trim();
+      }
+      return "";
+    }
+
+    function describeToolCall(tool) {
+      const name = String(tool && tool.name ? tool.name : "");
+      const input = tool && tool.input && typeof tool.input === "object" ? tool.input : {};
+
+      if (name === "Read") {
+        const path = input.file_path || input.path || "--";
+        const hasOffset = typeof input.offset === "number";
+        const hasLimit = typeof input.limit === "number";
+        const range = hasOffset ? " · " + input.offset + (hasLimit ? "-" + (input.offset + input.limit) : "") : "";
+        return "读取 " + path + range;
+      }
+      if (name === "Write") {
+        const path = input.file_path || "--";
+        const size = typeof input.content === "string" ? input.content.length + " chars" : "--";
+        return "写入 " + path + " · " + size;
+      }
+      if (name === "Edit") {
+        return "编辑 " + (input.file_path || "--");
+      }
+      if (name === "MultiEdit") {
+        const editCount = Array.isArray(input.edits) ? input.edits.length : 0;
+        return "批量编辑 " + (input.file_path || "--") + (editCount ? " · " + editCount + " edits" : "");
+      }
+      if (name === "NotebookEdit") {
+        return "编辑 Notebook " + (input.notebook_path || "--");
+      }
+      if (name === "NotebookRead") {
+        return "读取 Notebook " + (input.notebook_path || "--");
+      }
+      if (name === "LS") {
+        return "列目录 " + (input.path || ".");
+      }
+      if (name === "Glob") {
+        return "搜索文件 " + (input.pattern || "--");
+      }
+      if (name === "Grep") {
+        return "搜索内容 " + (input.pattern || "--");
+      }
+      if (name === "Bash") {
+        return toolNativeDescription(tool) || input.command || "Bash";
+      }
+      if (name === "WebSearch") {
+        return "搜索 " + (input.query || "--");
+      }
+      if (name === "WebFetch") {
+        return "抓取 " + (input.url || "--");
+      }
+      if (name === "Agent") {
+        const description = toolNativeDescription(tool) || input.description || "--";
+        const agentType = input.subagent_type ? " · " + input.subagent_type : "";
+        return "子 Agent " + description + agentType;
+      }
+      if (name === "TodoWrite") {
+        const todoCount = Array.isArray(input.todos) ? input.todos.length : 0;
+        return "更新 Todo" + (todoCount ? " · " + todoCount + " 项" : "");
+      }
+      if (name === "AskUserQuestion") {
+        const question = Array.isArray(input.questions) && input.questions[0] && input.questions[0].question
+          ? input.questions[0].question
+          : "--";
+        return "向用户提问 · " + question;
+      }
+      if (name === "Skill") {
+        return "/" + String(input.skill || "--") + (input.args ? " " + input.args : "");
+      }
+      if (name === "ExitPlanMode") {
+        return "退出计划模式";
+      }
+      if (/^mcp__/i.test(name)) {
+        const parts = name.split("__");
+        if (parts.length >= 3) {
+          return "MCP · " + parts[1] + " / " + parts[2];
+        }
+        return name;
+      }
+      return name || text.toolCategoryUnknown;
     }
 
     function readCachedSnapshot() {
@@ -2006,6 +2440,8 @@ export function buildProxyTraceDashboardHtml(
             inputTokens: typeof event.inputTokens === "number" ? event.inputTokens : null,
             outputTokens: typeof event.outputTokens === "number" ? event.outputTokens : null,
             note: event.note || null,
+            promptSnapshot: event.promptSnapshot || null,
+            toolCalls: Array.isArray(event.toolCalls) ? event.toolCalls : [],
             lastEventType: event.type,
             state: "in_flight"
           };
@@ -2024,6 +2460,8 @@ export function buildProxyTraceDashboardHtml(
         if (typeof event.inputTokens === "number") entry.inputTokens = event.inputTokens;
         if (typeof event.outputTokens === "number") entry.outputTokens = event.outputTokens;
         if (event.note) entry.note = event.note;
+        if (event.promptSnapshot) entry.promptSnapshot = event.promptSnapshot;
+        if (Array.isArray(event.toolCalls) && event.toolCalls.length) entry.toolCalls = event.toolCalls;
         entry.lastEventType = event.type;
 
         if (event.type === "upload") {
@@ -2191,6 +2629,144 @@ export function buildProxyTraceDashboardHtml(
       }).join("");
     }
 
+    function renderPromptStructure(request) {
+      const snapshot = request.promptSnapshot;
+      if (!snapshot) {
+        elements.drawerPromptStructure.innerHTML = '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
+        elements.drawerRawPrompt.innerHTML = "";
+        return;
+      }
+
+      const systemBlocks = Array.isArray(snapshot.systemBlocks) ? snapshot.systemBlocks : [];
+      const messages = Array.isArray(snapshot.messages) ? snapshot.messages : [];
+
+      const systemHtml = systemBlocks.length
+        ? systemBlocks.map(function (block) {
+            const headings = extractMarkdownHeadings(block.text);
+            const xmlTags = extractXmlTags(block.text);
+            const tags = [
+              '<span class="insight-tag">' + escapeHtml(text.systemBlockLabel + "[" + block.index + "]") + '</span>',
+              '<span class="insight-tag muted">' + escapeHtml(block.type || "text") + '</span>',
+              '<span class="insight-tag muted">' + escapeHtml(String(block.text.length) + " chars") + '</span>'
+            ];
+            if (headings.length) {
+              tags.push('<span class="insight-tag muted">' + escapeHtml(text.headingCountLabel + " · " + headings.length) + '</span>');
+            }
+            if (xmlTags.length) {
+              tags.push('<span class="insight-tag muted">' + escapeHtml(text.xmlTagLabel + " · " + xmlTags.join(", ")) + '</span>');
+            }
+
+            const preview = block.text.includes("<melu-memory>")
+              ? truncatePreview(block.text.replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim(), 220)
+              : truncatePreview(block.text, 220);
+
+            return '<div class="insight-card">'
+              + '<div class="insight-head">'
+              + '<div class="insight-title-row">'
+              + '<div class="insight-title">' + escapeHtml(inferSystemBlockTitle(block)) + '</div>'
+              + '<div class="insight-subtitle">' + escapeHtml(preview || "--") + '</div>'
+              + '</div>'
+              + '</div>'
+              + '<div class="insight-tags">' + tags.join("") + '</div>'
+              + (headings.length
+                ? '<div class="insight-tags">' + headings.slice(0, 10).map(function (heading) {
+                    return '<span class="insight-tag muted">' + escapeHtml(heading) + '</span>';
+                  }).join("") + '</div>'
+                : '')
+              + '</div>';
+          }).join("")
+        : '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
+
+      const messageHtml = messages.length
+        ? messages.map(function (message) {
+            const xmlTags = extractXmlTags(message.text);
+            const tags = [
+              '<span class="insight-tag">' + escapeHtml(text.messageLabel + "[" + message.index + "]") + '</span>',
+              '<span class="insight-tag muted">' + escapeHtml(message.role) + '</span>'
+            ];
+            if (Array.isArray(message.contentTypes) && message.contentTypes.length) {
+              tags.push('<span class="insight-tag muted">' + escapeHtml(text.contentTypesLabel + " · " + message.contentTypes.join(", ")) + '</span>');
+            }
+            if (xmlTags.length) {
+              tags.push('<span class="insight-tag muted">' + escapeHtml(text.xmlTagLabel + " · " + xmlTags.join(", ")) + '</span>');
+            }
+            if (message.toolResultOnly) {
+              tags.push('<span class="insight-tag muted">tool_result only</span>');
+            }
+            return '<div class="insight-card">'
+              + '<div class="insight-title-row">'
+              + '<div class="insight-title">' + escapeHtml((message.role || "unknown") + " #" + message.index) + '</div>'
+              + '<div class="insight-subtitle">' + escapeHtml(text.promptMessagePreviewLabel) + '</div>'
+              + '</div>'
+              + '<div class="insight-tags">' + tags.join("") + '</div>'
+              + '<div class="insight-preview">' + escapeHtml(truncatePreview(message.text || "--", 320)) + '</div>'
+              + '</div>';
+          }).join("")
+        : '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
+
+      elements.drawerPromptStructure.innerHTML =
+        '<div class="insight-card">'
+          + '<div class="insight-title-row">'
+          + '<div class="insight-title">' + escapeHtml(text.promptBlocksTitle) + '</div>'
+          + '<div class="insight-subtitle">' + escapeHtml(String(systemBlocks.length) + " blocks") + '</div>'
+          + '</div>'
+          + '</div>'
+        + systemHtml
+        + '<div class="insight-card">'
+          + '<div class="insight-title-row">'
+          + '<div class="insight-title">' + escapeHtml(text.messageFlowTitle) + '</div>'
+          + '<div class="insight-subtitle">' + escapeHtml(String(messages.length) + " messages") + '</div>'
+          + '</div>'
+          + '</div>'
+        + messageHtml;
+
+      const rawPromptInner = '<details>'
+        + '<summary>' + escapeHtml(text.rawPromptAction) + '</summary>'
+        + '<div class="raw-panel-body">'
+        + (snapshot.rawRequestTruncated ? '<div class="raw-note">' + escapeHtml(text.rawPromptTruncatedNotice) + '</div>' : '')
+        + '<div class="raw-note">' + escapeHtml(text.rawRequestPayloadLabel) + '</div>'
+        + '<pre class="raw-pre">' + escapeHtml(snapshot.rawRequestBody || "--") + '</pre>'
+        + '</div>'
+        + '</details>';
+      elements.drawerRawPrompt.innerHTML = rawPromptInner;
+    }
+
+    function renderToolActivity(request) {
+      const toolCalls = Array.isArray(request.toolCalls) ? request.toolCalls : [];
+      if (!toolCalls.length) {
+        elements.drawerToolActivity.innerHTML = '<div class="tool-empty">' + escapeHtml(text.noToolActivity) + '</div>';
+        return;
+      }
+
+      elements.drawerToolActivity.innerHTML = toolCalls.map(function (tool, index) {
+        const nativeDescription = toolNativeDescription(tool);
+        const inputPayload = safeJson(tool.input);
+        return '<div class="tool-card">'
+          + '<div class="tool-head">'
+          + '<div class="tool-title-row">'
+          + '<div class="tool-title">' + escapeHtml(tool.name || "Tool") + '</div>'
+          + '<div class="tool-summary">' + escapeHtml(describeToolCall(tool)) + '</div>'
+          + '</div>'
+          + '<div class="tool-tags">'
+          + '<span class="tool-tag">' + escapeHtml(toolCategory(tool.name)) + '</span>'
+          + '<span class="tool-tag muted">' + escapeHtml(tool.kind || "tool_use") + '</span>'
+          + (tool.id ? '<span class="tool-tag muted">' + escapeHtml(truncatePreview(tool.id, 18)) + '</span>' : '')
+          + '</div>'
+          + '</div>'
+          + (nativeDescription
+            ? '<div class="tool-meta"><div class="meta-label">' + escapeHtml(text.toolNativeDescriptionLabel) + '</div><div class="meta-value">' + escapeHtml(nativeDescription) + '</div></div>'
+            : '')
+          + '<div class="raw-panel"><details>'
+          + '<summary>' + escapeHtml(text.rawToolInputAction + " #" + (index + 1)) + '</summary>'
+          + '<div class="raw-panel-body">'
+          + '<div class="raw-note">' + escapeHtml(text.rawToolInputLabel) + '</div>'
+          + '<pre class="raw-pre">' + escapeHtml(inputPayload || "--") + '</pre>'
+          + '</div>'
+          + '</details></div>'
+          + '</div>';
+      }).join("");
+    }
+
     function openDrawer() {
       const request = latestState.requests.find(function (item) { return item.requestId === selectedRequestId; });
       if (!request) {
@@ -2217,6 +2793,8 @@ export function buildProxyTraceDashboardHtml(
       elements.drawerResponseBytes.textContent = formatBytes(request.responseBytes);
       elements.drawerEventType.textContent = typeInfo.main;
       elements.drawerNote.textContent = request.note || "--";
+      renderPromptStructure(request);
+      renderToolActivity(request);
 
       elements.drawerBackdrop.hidden = false;
       elements.detailDrawer.hidden = false;
