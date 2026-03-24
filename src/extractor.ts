@@ -27,28 +27,29 @@ const MEMORY_CATEGORIES = new Set([
   "correction",
 ]);
 
-const EXTRACTION_PROMPT = `You are a strict long-term memory extractor.
-Based only on the user message below, determine whether there is exactly one stable memory worth keeping for future conversations.
+const EXTRACTION_PROMPT = `You are a careful long-term memory extractor.
+Based only on the user message below, determine whether there is one useful memory worth keeping for future conversations.
 
 Extraction rules:
 - Look only at the user message. Do not use any imagined assistant reply.
 - Extract at most one memory.
-- Keep only information that is stable, durable, and likely to remain useful later.
-- Do not extract one-off requests, casual chit-chat, temporary tasks, or noisy situational context.
+- Prefer information that is likely to be useful again in future conversations, especially profile details, ongoing project context, durable preferences, important corrections, or recent events that may still matter later.
+- If a detail is plausibly reusable for personalization, continuity, or project understanding, prefer keeping it rather than returning null.
+- Do not extract pure one-off requests, casual chit-chat with no lasting signal, temporary tasks with no future value, or noisy situational context that is unlikely to matter again.
 
 Language rule:
 - Use the same language as the user's message when writing the memory.
 
 Field requirements:
-- content: up to 60 words, include enough context and detail to be useful on its own
-- summary: one short summary sentence, ideally no more than 30 Chinese characters or 20 English words, with a hard limit of 50 characters
+- content: up to 75 words, include enough context and detail to be useful on its own
+- summary: one short summary sentence, ideally no more than 30 words, with a hard limit of 60 characters
 - category: must be one of profile / project / event / preference / correction
 - subject: a short topic tag such as user.name / user.preference.answer_style / project.melu
 
 Output requirements:
 - If a memory should be kept, output exactly one JSON object:
   {"content":"...","summary":"...","category":"...","subject":"..."}
-- If nothing should be kept, output null
+- If nothing clearly reusable should be kept, output null
 - Do not output Markdown
 - Do not output explanations
 

@@ -7,7 +7,7 @@
  */
 
 import { Command } from "commander";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -149,6 +149,8 @@ program
     console.log(`[Melu] run_id: ${runId}`);
     console.log("");
 
+    await cleanupStaleProxyOnPort(port);
+
     const daemonEnv: NodeJS.ProcessEnv = {
       ...process.env,
       MELU_RUN_ID: runId,
@@ -178,7 +180,7 @@ program
     if (proxyChild.pid) {
       writeFileSync(PID_FILE, String(proxyChild.pid));
     }
-    await waitForProxy(port, 120000, config.uiLanguage);
+    await waitForProxy(port, runId, 120000, config.uiLanguage);
     console.log(`[Melu] trace dashboard: http://127.0.0.1:${port}/__melu`);
 
     const workerChild = spawnMeluProcess(
@@ -524,26 +526,37 @@ program
 
 function waitForProxy(
   port: number,
+  expectedRunId: string,
   timeout = 10000,
   language: MeluConfig["uiLanguage"] = null,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const ui = createI18n(language);
     const start = Date.now();
-    const tryConnect = () => {
-      const sock = createConnection({ host: "127.0.0.1", port }, () => {
-        sock.destroy();
-        resolve();
-      });
-      sock.on("error", () => {
-        if (Date.now() - start > timeout) {
-          reject(new Error(ui.t("proxyStartupTimeout")));
-        } else {
-          setTimeout(tryConnect, 300);
+
+    const tryConnect = async () => {
+      try {
+        const resp = await fetch(`http://127.0.0.1:${port}/__melu/events`, { cache: "no-store" });
+        if (resp.ok) {
+          const payload = (await resp.json()) as { runId?: string };
+          if (payload.runId === expectedRunId) {
+            resolve();
+            return;
+          }
         }
-      });
+      } catch {
+        // keep polling below
+      }
+
+      if (Date.now() - start > timeout) {
+        reject(new Error(ui.t("proxyStartupTimeout")));
+        return;
+      }
+      setTimeout(() => {
+        void tryConnect();
+      }, 300);
     };
-    tryConnect();
+    void tryConnect();
   });
 }
 
@@ -575,6 +588,68 @@ function checkPort(port: number): Promise<boolean> {
       resolve(false); // 端口空闲
     });
   });
+}
+
+function listListeningPidsForPort(port: number): number[] {
+  try {
+    const output = execFileSync(
+      "lsof",
+      ["-nP", `-iTCP:${port}`, "-sTCP:LISTEN", "-t"],
+      { encoding: "utf-8" },
+    ).trim();
+    if (!output) return [];
+    return output
+      .split(/\s+/)
+      .map((value) => parseInt(value, 10))
+      .filter((value) => Number.isInteger(value) && value > 0);
+  } catch {
+    return [];
+  }
+}
+
+function readProcessCommand(pid: number): string {
+  try {
+    return execFileSync("ps", ["-p", String(pid), "-o", "command="], { encoding: "utf-8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function isMeluProxyProcess(pid: number): boolean {
+  const command = readProcessCommand(pid);
+  return command.includes("proxy-main.js") && command.includes("melu");
+}
+
+async function cleanupStaleProxyOnPort(port: number): Promise<void> {
+  const pidFromFile = readPid();
+  if (pidFromFile !== null && isProcessAlive(pidFromFile)) {
+    return;
+  }
+
+  const candidatePids = listListeningPidsForPort(port);
+  if (!candidatePids.length) {
+    clearProxyPidFile();
+    return;
+  }
+
+  let killedAny = false;
+  for (const pid of candidatePids) {
+    if (!isMeluProxyProcess(pid)) continue;
+    console.warn(`[Melu] 清理遗留 proxy 进程: pid=${pid}, port=${port}`);
+    terminateProcess(pid);
+    killedAny = true;
+  }
+
+  if (killedAny) {
+    const deadline = Date.now() + 4000;
+    while (Date.now() < deadline) {
+      const occupied = await checkPort(port);
+      if (!occupied) break;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+  }
+
+  clearProxyPidFile();
 }
 
 function stopProxy(): void {

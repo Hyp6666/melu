@@ -161,7 +161,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     totalRequests: "Total Requests",
     inFlight: "In-flight",
     successRate: "Success Rate",
-    latency: "Latency",
+    latency: "Tokens",
     uploaded: "Up",
     downloaded: "Down",
     p95Label: "P95",
@@ -180,7 +180,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     tableModel: "Model",
     tableStream: "Stream",
     tableStatus: "Status",
-    tableUsage: "Usage",
+    tableUsage: "Tokens",
     tableDuration: "Duration",
     tableBytes: "Bytes",
     emptyTitle: "No traffic detected yet.",
@@ -217,7 +217,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     responseBytesLabel: "Response Bytes",
     inputTokensLabel: "Input Tokens",
     outputTokensLabel: "Output Tokens",
-    usageLabel: "Usage",
+    usageLabel: "Tokens",
     eventTypeLabel: "Event Type",
     timestampLabel: "Timestamp",
     mainAgent: "Main",
@@ -271,7 +271,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     totalRequests: "总请求数",
     inFlight: "进行中",
     successRate: "成功率",
-    latency: "耗时",
+    latency: "Tokens",
     uploaded: "上传",
     downloaded: "下载",
     p95Label: "P95",
@@ -290,7 +290,7 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     tableModel: "模型",
     tableStream: "流式",
     tableStatus: "状态",
-    tableUsage: "用量",
+    tableUsage: "Tokens",
     tableDuration: "耗时",
     tableBytes: "字节",
     emptyTitle: "还没有检测到流量。",
@@ -325,9 +325,9 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     noteLabel: "备注",
     requestBytesLabel: "请求字节",
     responseBytesLabel: "响应字节",
-    inputTokensLabel: "输入 Tokens",
-    outputTokensLabel: "输出 Tokens",
-    usageLabel: "用量",
+    inputTokensLabel: "Input Tokens",
+    outputTokensLabel: "Output Tokens",
+    usageLabel: "Tokens",
     eventTypeLabel: "事件类型",
     timestampLabel: "时间",
     mainAgent: "主代理",
@@ -1254,8 +1254,14 @@ export function buildProxyTraceDashboardHtml(
     .drawer-backdrop {
       position: fixed;
       inset: 0;
-      background: rgba(20, 16, 12, 0.14);
+      background: rgba(20, 16, 12, 0.08);
+      opacity: 0;
       z-index: 60;
+      transition: opacity 220ms ease;
+    }
+
+    .drawer-backdrop.is-open {
+      opacity: 1;
     }
 
     .drawer {
@@ -1304,11 +1310,14 @@ export function buildProxyTraceDashboardHtml(
       background: rgba(255, 255, 255, 0.84);
       color: var(--muted);
       border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
+      width: 36px;
+      height: 36px;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 500;
     }
 
     .drawer-body {
@@ -1645,7 +1654,7 @@ export function buildProxyTraceDashboardHtml(
                 <span class="metric-mark neutral"></span>
               </div>
               <div id="card-latency" class="metric-value">--</div>
-              <div id="card-p95" class="metric-sub">${copy.p95Label}: --</div>
+              <div id="card-p95" class="metric-sub">${copy.inputTokensLabel}: --</div>
             </article>
           </section>
 
@@ -1720,7 +1729,7 @@ export function buildProxyTraceDashboardHtml(
   <aside id="detail-drawer" class="drawer" hidden>
     <div class="drawer-head">
       <div id="drawer-request-title" class="drawer-title">${copy.drawerTitle}</div>
-      <button id="drawer-close" class="drawer-close" type="button">Close</button>
+      <button id="drawer-close" class="drawer-close" type="button" aria-label="Close">×</button>
     </div>
     <div class="drawer-body">
       <section class="detail-section">
@@ -2038,6 +2047,12 @@ export function buildProxyTraceDashboardHtml(
       const inFlight = requests.filter(function (request) { return request.state === "in_flight"; });
       const uploadEvents = events.filter(function (event) { return event.type === "upload"; }).length;
       const receiveStartEvents = events.filter(function (event) { return event.type === "receive_start"; }).length;
+      const totalInputTokens = requests.reduce(function (sum, request) {
+        return sum + (typeof request.inputTokens === "number" ? request.inputTokens : 0);
+      }, 0);
+      const totalOutputTokens = requests.reduce(function (sum, request) {
+        return sum + (typeof request.outputTokens === "number" ? request.outputTokens : 0);
+      }, 0);
       const latencySource = completed.length ? completed : requests.filter(function (request) {
         return request.state === "completed" || request.state === "error";
       });
@@ -2053,6 +2068,9 @@ export function buildProxyTraceDashboardHtml(
         inFlight: inFlight.length,
         uploadEvents: uploadEvents,
         receiveStartEvents: receiveStartEvents,
+        totalInputTokens: totalInputTokens,
+        totalOutputTokens: totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens,
         successRate: closedCount ? Math.round((completed.length / closedCount) * 100) : null,
         averageLatencyMs: mean(finishedDurations),
         p95LatencyMs: percentile(finishedDurations, 95),
@@ -2115,8 +2133,8 @@ export function buildProxyTraceDashboardHtml(
       elements.cardSuccessRate.textContent = stats.successRate === null ? "--" : stats.successRate + "%";
       elements.cardSuccessCount.textContent = text.completedBadge + ": " + stats.completed;
       elements.cardErrorCount.textContent = text.errorBadge + ": " + stats.failed;
-      elements.cardLatency.textContent = formatDuration(stats.averageLatencyMs);
-      elements.cardP95.textContent = text.p95Label + ": " + formatDuration(stats.p95LatencyMs);
+      elements.cardLatency.textContent = stats.totalTokens ? formatTokenCount(stats.totalTokens) : "--";
+      elements.cardP95.textContent = text.inputTokensLabel + ": " + formatTokenCount(stats.totalInputTokens) + " · " + text.outputTokensLabel + ": " + formatTokenCount(stats.totalOutputTokens);
     }
 
     function renderTimeline(requests) {
@@ -2203,6 +2221,7 @@ export function buildProxyTraceDashboardHtml(
       elements.drawerBackdrop.hidden = false;
       elements.detailDrawer.hidden = false;
       requestAnimationFrame(function () {
+        elements.drawerBackdrop.classList.add("is-open");
         elements.detailDrawer.classList.add("is-open");
       });
     }
@@ -2211,10 +2230,11 @@ export function buildProxyTraceDashboardHtml(
       if (clearSelection !== false) {
         selectedRequestId = null;
       }
-      elements.drawerBackdrop.hidden = true;
+      elements.drawerBackdrop.classList.remove("is-open");
       elements.detailDrawer.classList.remove("is-open");
       setTimeout(function () {
         if (!elements.detailDrawer.classList.contains("is-open")) {
+          elements.drawerBackdrop.hidden = true;
           elements.detailDrawer.hidden = true;
         }
       }, 220);
@@ -2387,6 +2407,9 @@ export function buildProxyTraceDashboardHtml(
       inFlight: 0,
       uploadEvents: 0,
       receiveStartEvents: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalTokens: 0,
       successRate: null,
       averageLatencyMs: null,
       p95LatencyMs: null,
