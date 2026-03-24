@@ -38,10 +38,10 @@ Extraction rules:
 - Do not extract pure one-off requests, casual chit-chat with no lasting signal, temporary tasks with no future value, or noisy situational context that is unlikely to matter again.
 
 Language rule:
-- Use the same language as the user's message when writing the memory.
+- MUST use the same language as the user's message when writing the memory, it's very necessary to do that, you must do it.
 
 Field requirements:
-- content: up to 75 words, include enough context and detail to be useful on its own
+- content: up to 67 words, include enough context and detail to be useful on its own
 - summary: one short summary sentence, ideally no more than 30 words, with a hard limit of 60 characters
 - category: must be one of profile / project / event / preference / correction
 - subject: a short topic tag such as user.name / user.preference.answer_style / project.melu

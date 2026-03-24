@@ -13,8 +13,6 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConnection } from "node:net";
-import { truncateCharacters } from "./text-chunking.js";
-
 import {
   MELU_HOME,
   PID_FILE,
@@ -304,10 +302,10 @@ program
 
     console.log(`\n${ui.t("memoriesTitle", { count: memories.length })}\n`);
     console.log(
-      "ID".padEnd(12) +
-      ui.t("tableType").padEnd(14) +
-      ui.t("tableSummary").padEnd(50) +
-      ui.t("tableCreatedAt").padEnd(20) +
+      padToDisplayWidth("ID", 12) +
+      padToDisplayWidth(ui.t("tableType"), 14) +
+      padToDisplayWidth(ui.t("tableSummary"), 50) +
+      padToDisplayWidth(ui.t("tableCreatedAt"), 20) +
       ui.t("tableStatus")
     );
     console.log("-".repeat(100));
@@ -315,10 +313,10 @@ program
     for (const m of memories) {
       const status = m.isActive ? "✓" : "✗";
       console.log(
-        m.id.slice(0, 10).padEnd(12) +
-        m.category.padEnd(14) +
-        truncateCharacters(m.summary, 46).padEnd(50) +
-        m.createdAt.slice(0, 16).padEnd(20) +
+        padToDisplayWidth(m.id.slice(0, 10), 12) +
+        padToDisplayWidth(m.category, 14) +
+        padToDisplayWidth(truncateToDisplayWidth(m.summary, 46), 50) +
+        padToDisplayWidth(m.createdAt.slice(0, 16), 20) +
         status
       );
     }
@@ -694,6 +692,91 @@ function spawnMeluProcess(
   }
 
   return child;
+}
+
+function truncateToDisplayWidth(text: string, maxWidth: number, suffix = "…"): string {
+  if (maxWidth <= 0) return "";
+
+  const trimmed = text.trim();
+  if (getDisplayWidth(trimmed) <= maxWidth) {
+    return trimmed;
+  }
+
+  const suffixWidth = getDisplayWidth(suffix);
+  if (suffixWidth >= maxWidth) {
+    return trimToDisplayWidth(trimmed, maxWidth);
+  }
+
+  return `${trimToDisplayWidth(trimmed, maxWidth - suffixWidth)}${suffix}`;
+}
+
+function padToDisplayWidth(text: string, width: number): string {
+  const visibleWidth = getDisplayWidth(text);
+  if (visibleWidth >= width) {
+    return text;
+  }
+
+  return text + " ".repeat(width - visibleWidth);
+}
+
+function trimToDisplayWidth(text: string, maxWidth: number): string {
+  let visibleWidth = 0;
+  let result = "";
+
+  for (const char of Array.from(text)) {
+    const charWidth = getCharacterDisplayWidth(char);
+    if (visibleWidth + charWidth > maxWidth) {
+      break;
+    }
+    result += char;
+    visibleWidth += charWidth;
+  }
+
+  return result;
+}
+
+function getDisplayWidth(text: string): number {
+  let width = 0;
+
+  for (const char of Array.from(text)) {
+    width += getCharacterDisplayWidth(char);
+  }
+
+  return width;
+}
+
+function getCharacterDisplayWidth(char: string): number {
+  const codePoint = char.codePointAt(0);
+  if (codePoint == null) return 0;
+  if (
+    codePoint === 0 ||
+    codePoint < 0x20 ||
+    (codePoint >= 0x7f && codePoint < 0xa0)
+  ) {
+    return 0;
+  }
+
+  if (
+    codePoint >= 0x1100 && (
+      codePoint <= 0x115f ||
+      codePoint === 0x2329 ||
+      codePoint === 0x232a ||
+      (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
+      (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
+      (codePoint >= 0xff00 && codePoint <= 0xff60) ||
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+      (codePoint >= 0x1f300 && codePoint <= 0x1f64f) ||
+      (codePoint >= 0x1f900 && codePoint <= 0x1f9ff) ||
+      (codePoint >= 0x20000 && codePoint <= 0x3fffd)
+    )
+  ) {
+    return 2;
+  }
+
+  return 1;
 }
 
 function printRunSummary(
