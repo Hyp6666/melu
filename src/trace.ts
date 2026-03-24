@@ -193,6 +193,55 @@ interface DashboardCopy {
   promptMessagePreviewLabel: string;
   rawRequestPayloadLabel: string;
   rawToolInputLabel: string;
+  promptGroupSystem: string;
+  promptGroupMemory: string;
+  promptGroupUser: string;
+  promptGroupTags: string;
+  promptItemMainSystem: string;
+  promptItemSystemBlock: string;
+  promptItemMemoryInjection: string;
+  promptItemUserInput: string;
+  promptItemToolResult: string;
+  promptItemAssistantContext: string;
+  promptItemTagContext: string;
+  promptItemClaudeMd: string;
+  promptItemSystemReminder: string;
+  promptItemTaskNotification: string;
+  promptItemDeferredTools: string;
+  promptItemLocalCommand: string;
+  promptItemCommandContext: string;
+  countBlocks: string;
+  countEntries: string;
+  countMessages: string;
+  countKinds: string;
+  countChars: string;
+  toolLabelOriginalName: string;
+  toolLabelDescription: string;
+  toolLabelPath: string;
+  toolLabelPattern: string;
+  toolLabelCommand: string;
+  toolLabelScope: string;
+  toolLabelType: string;
+  toolLabelTask: string;
+  toolLabelTimeout: string;
+  toolLabelUrl: string;
+  toolLabelCount: string;
+  toolActionRead: string;
+  toolActionWrite: string;
+  toolActionEdit: string;
+  toolActionBrowse: string;
+  toolActionSearchFiles: string;
+  toolActionSearchContent: string;
+  toolActionRunCommand: string;
+  toolActionWebSearch: string;
+  toolActionWebFetch: string;
+  toolActionAgent: string;
+  toolActionTodo: string;
+  toolActionAskUser: string;
+  toolActionSkill: string;
+  toolActionPlanExit: string;
+  toolActionMcp: string;
+  toolActionGeneric: string;
 }
 
 const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
@@ -333,6 +382,55 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     promptMessagePreviewLabel: "Preview",
     rawRequestPayloadLabel: "Raw request payload",
     rawToolInputLabel: "Raw tool input",
+    promptGroupSystem: "System",
+    promptGroupMemory: "Memory",
+    promptGroupUser: "User",
+    promptGroupTags: "Added Context",
+    promptItemMainSystem: "Main System",
+    promptItemSystemBlock: "System Block",
+    promptItemMemoryInjection: "Memory Injection",
+    promptItemUserInput: "User Input",
+    promptItemToolResult: "Tool Result",
+    promptItemAssistantContext: "Assistant Context",
+    promptItemTagContext: "Tagged Context",
+    promptItemClaudeMd: "CLAUDE.md",
+    promptItemSystemReminder: "System Reminder",
+    promptItemTaskNotification: "Task Notification",
+    promptItemDeferredTools: "Available Tools",
+    promptItemLocalCommand: "Local Command Note",
+    promptItemCommandContext: "Command Context",
+    countBlocks: "blocks",
+    countEntries: "entries",
+    countMessages: "messages",
+    countKinds: "kinds",
+    countChars: "chars",
+    toolLabelOriginalName: "Original tool",
+    toolLabelDescription: "Description",
+    toolLabelPath: "Path",
+    toolLabelPattern: "Pattern",
+    toolLabelCommand: "Command",
+    toolLabelScope: "Scope",
+    toolLabelType: "Type",
+    toolLabelTask: "Task",
+    toolLabelTimeout: "Timeout",
+    toolLabelUrl: "URL",
+    toolLabelCount: "Count",
+    toolActionRead: "Read File",
+    toolActionWrite: "Write File",
+    toolActionEdit: "Edit File",
+    toolActionBrowse: "Browse Files",
+    toolActionSearchFiles: "Find Files",
+    toolActionSearchContent: "Search Content",
+    toolActionRunCommand: "Run Command",
+    toolActionWebSearch: "Search Web",
+    toolActionWebFetch: "Fetch Page",
+    toolActionAgent: "Spawn Subagent",
+    toolActionTodo: "Update Todo",
+    toolActionAskUser: "Ask User",
+    toolActionSkill: "Run Skill",
+    toolActionPlanExit: "Exit Plan",
+    toolActionMcp: "Call MCP",
+    toolActionGeneric: "Use Tool",
   },
   "zh-CN": {
     pageTitle: "Melu Trace",
@@ -471,6 +569,55 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     promptMessagePreviewLabel: "预览",
     rawRequestPayloadLabel: "原始请求载荷",
     rawToolInputLabel: "原始工具输入",
+    promptGroupSystem: "系统",
+    promptGroupMemory: "记忆",
+    promptGroupUser: "用户",
+    promptGroupTags: "附加标签",
+    promptItemMainSystem: "主系统",
+    promptItemSystemBlock: "系统块",
+    promptItemMemoryInjection: "记忆注入",
+    promptItemUserInput: "用户输入",
+    promptItemToolResult: "工具结果",
+    promptItemAssistantContext: "助手上下文",
+    promptItemTagContext: "标签上下文",
+    promptItemClaudeMd: "CLAUDE.md",
+    promptItemSystemReminder: "系统提醒",
+    promptItemTaskNotification: "任务通知",
+    promptItemDeferredTools: "可用工具",
+    promptItemLocalCommand: "本地命令说明",
+    promptItemCommandContext: "命令上下文",
+    countBlocks: "段",
+    countEntries: "条",
+    countMessages: "条",
+    countKinds: "类",
+    countChars: "字",
+    toolLabelOriginalName: "原始工具",
+    toolLabelDescription: "原生说明",
+    toolLabelPath: "路径",
+    toolLabelPattern: "关键词",
+    toolLabelCommand: "命令",
+    toolLabelScope: "范围",
+    toolLabelType: "类型",
+    toolLabelTask: "任务",
+    toolLabelTimeout: "超时",
+    toolLabelUrl: "地址",
+    toolLabelCount: "数量",
+    toolActionRead: "读取文件",
+    toolActionWrite: "写入文件",
+    toolActionEdit: "修改文件",
+    toolActionBrowse: "浏览目录",
+    toolActionSearchFiles: "搜索文件",
+    toolActionSearchContent: "搜索内容",
+    toolActionRunCommand: "执行命令",
+    toolActionWebSearch: "联网搜索",
+    toolActionWebFetch: "抓取网页",
+    toolActionAgent: "派出子代理",
+    toolActionTodo: "更新 Todo",
+    toolActionAskUser: "请求输入",
+    toolActionSkill: "调用技能",
+    toolActionPlanExit: "结束规划",
+    toolActionMcp: "调用 MCP",
+    toolActionGeneric: "调用工具",
   },
 };
 
@@ -1533,141 +1680,218 @@ export function buildProxyTraceDashboardHtml(
     .insight-stack,
     .tool-stack {
       display: grid;
-      gap: 12px;
+      gap: 14px;
     }
 
-    .insight-card,
-    .tool-card,
+    .accordion-group,
+    .tool-item,
+    .nested-item,
     .raw-panel details {
       border: 1px solid var(--line-soft);
-      border-radius: 16px;
+      border-radius: 18px;
       background: rgba(255, 255, 255, 0.58);
+      overflow: hidden;
     }
 
-    .insight-card,
-    .tool-card {
-      padding: 14px 16px;
-      display: grid;
-      gap: 10px;
+    .accordion-group summary,
+    .tool-item summary,
+    .nested-item summary,
+    .raw-panel summary {
+      list-style: none;
+      cursor: pointer;
     }
 
-    .insight-head,
-    .tool-head {
+    .accordion-group summary::-webkit-details-marker,
+    .tool-item summary::-webkit-details-marker,
+    .nested-item summary::-webkit-details-marker,
+    .raw-panel summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .accordion-summary {
+      padding: 16px 18px;
       display: flex;
       align-items: start;
       justify-content: space-between;
       gap: 16px;
     }
 
-    .insight-title-row,
-    .tool-title-row {
+    .accordion-title-wrap {
       display: grid;
       gap: 6px;
       min-width: 0;
     }
 
-    .insight-title,
-    .tool-title {
-      font-size: 13px;
+    .accordion-title {
+      font-size: 15px;
       font-weight: 700;
       color: var(--ink);
-      line-height: 1.4;
+      line-height: 1.3;
     }
 
-    .insight-subtitle,
-    .tool-summary {
+    .tool-item .accordion-title {
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .accordion-note {
       color: var(--muted);
       font-size: 11px;
       line-height: 1.7;
       word-break: break-word;
     }
 
-    .insight-tags,
-    .tool-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .insight-tag,
-    .tool-tag {
+    .accordion-badge {
+      flex: 0 0 auto;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 10px;
+      padding: 7px 11px;
       border-radius: 999px;
       background: rgba(83, 42, 168, 0.08);
       color: var(--primary);
       font-size: 10px;
       font-weight: 700;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
     }
 
-    .insight-tag.muted,
-    .tool-tag.muted {
-      background: rgba(23, 23, 23, 0.06);
-      color: var(--muted);
-    }
-
-    .insight-preview {
-      font-size: 11px;
-      line-height: 1.8;
-      color: var(--ink);
-      white-space: pre-wrap;
-      word-break: break-word;
-      background: rgba(245, 241, 235, 0.52);
-      border-radius: 12px;
-      padding: 12px 14px;
-    }
-
-    .raw-panel {
-      margin-top: 14px;
-    }
-
-    .raw-panel details {
-      overflow: hidden;
-    }
-
-    .raw-panel summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .raw-panel summary::-webkit-details-marker {
-      display: none;
-    }
-
+    .accordion-group > summary::after,
+    .tool-item > summary::after,
+    .nested-item > summary::after,
     .raw-panel summary::after {
       content: "+";
+      position: absolute;
+      right: 18px;
+      top: 50%;
+      transform: translateY(-50%);
       color: var(--primary);
       font-size: 18px;
       line-height: 1;
     }
 
+    .accordion-group > summary,
+    .tool-item > summary,
+    .nested-item > summary,
+    .raw-panel summary {
+      position: relative;
+      padding-right: 48px;
+    }
+
+    .accordion-group[open] > summary::after,
+    .tool-item[open] > summary::after,
+    .nested-item[open] > summary::after,
     .raw-panel details[open] summary::after {
       content: "−";
     }
 
+    .accordion-body,
+    .tool-body,
+    .nested-body,
     .raw-panel-body {
       border-top: 1px solid var(--line-soft);
-      padding: 0 16px 16px;
+      padding: 0 18px 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .accordion-body {
+      padding-top: 16px;
+    }
+
+    .nested-list {
       display: grid;
       gap: 10px;
+    }
+
+    .nested-item {
+      background: rgba(247, 244, 239, 0.72);
+    }
+
+    .nested-item .accordion-summary {
+      padding: 13px 14px;
+    }
+
+    .nested-item .accordion-title {
+      font-size: 13px;
+    }
+
+    .nested-item .accordion-note {
+      font-size: 10px;
+    }
+
+    .block-meta,
+    .detail-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .block-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .block-content {
+      font-size: 12px;
+      line-height: 1.85;
+      color: var(--ink);
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 14px;
+      padding: 14px 15px;
+    }
+
+    .detail-row {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 18px;
+      border-bottom: 1px solid var(--line-soft);
+      padding-bottom: 10px;
+    }
+
+    .detail-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .detail-row-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      flex: 0 0 auto;
+    }
+
+    .detail-row-value {
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.75;
+      text-align: right;
+      word-break: break-word;
+      max-width: 70%;
+    }
+
+    .raw-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .raw-panel summary {
+      padding-right: 48px;
+    }
+
+    .raw-panel-body {
+      padding-top: 16px;
     }
 
     .raw-note {
       color: var(--muted);
       font-size: 11px;
       line-height: 1.7;
-      padding-top: 12px;
     }
 
     .raw-pre {
@@ -2258,40 +2482,195 @@ export function buildProxyTraceDashboardHtml(
       return matches ? matches.length : 0;
     }
 
-    function inferSystemBlockTitle(block) {
-      if (!block || !block.text) {
-        return text.systemBlockLabel + "[" + String(block ? block.index : 0) + "]";
-      }
-      const raw = String(block.text);
-      if (raw.includes("<melu-memory>")) {
-        const count = countMeluMemoryEntries(raw);
-        return "Melu Memory" + (count ? " · " + count : "");
-      }
-      if (raw.includes("CLAUDE.md")) {
-        return "CLAUDE.md";
-      }
-      const headings = extractMarkdownHeadings(raw);
-      if (headings.length) {
-        return headings[0];
-      }
-      const firstLine = raw.split(/\\r?\\n/).map(function (line) { return line.trim(); }).find(Boolean);
-      if (firstLine) {
-        return truncatePreview(firstLine, 42);
-      }
-      return text.systemBlockLabel + "[" + String(block.index) + "]";
+    function formatCountSummary(count, unit) {
+      return String(count) + " " + unit;
     }
 
-    function toolCategory(toolName) {
-      const name = String(toolName || "");
-      if (/^(Read|Write|Edit|MultiEdit|NotebookEdit|NotebookRead|LS)$/i.test(name)) return text.toolCategoryFiles;
-      if (/^(Glob|Grep)$/i.test(name)) return text.toolCategorySearch;
-      if (/^(Bash)$/i.test(name)) return text.toolCategoryExecution;
-      if (/^(WebFetch|WebSearch)$/i.test(name)) return text.toolCategoryNetwork;
-      if (/^(Agent)$/i.test(name)) return text.toolCategoryCollaboration;
-      if (/^(TodoWrite|AskUserQuestion|ExitPlanMode)$/i.test(name)) return text.toolCategoryPlanning;
-      if (/^(Skill)$/i.test(name)) return text.toolCategorySkill;
-      if (/^mcp__/i.test(name)) return "MCP";
-      return text.toolCategoryUnknown;
+    function formatCharCount(count) {
+      return formatCountSummary(count, text.countChars);
+    }
+
+    function firstContentLine(value) {
+      return String(value || "")
+        .split(/\\r?\\n/)
+        .map(function (line) { return line.trim(); })
+        .find(Boolean) || "";
+    }
+
+    function compactPath(value) {
+      const raw = String(value || "--");
+      if (raw.length <= 44) return raw;
+      const parts = raw.split("/").filter(Boolean);
+      if (parts.length >= 3) {
+        return "…/" + parts.slice(-3).join("/");
+      }
+      return truncatePreview(raw, 44);
+    }
+
+    function inferPromptTagTitle(tags, fallbackIndex) {
+      if (tags.includes("system-reminder")) {
+        return { key: "system-reminder", title: text.promptItemSystemReminder };
+      }
+      if (tags.includes("task-notification")) {
+        return { key: "task-notification", title: text.promptItemTaskNotification };
+      }
+      if (tags.includes("available-deferred-tools")) {
+        return { key: "available-deferred-tools", title: text.promptItemDeferredTools };
+      }
+      if (tags.includes("local-command-caveat")) {
+        return { key: "local-command-caveat", title: text.promptItemLocalCommand };
+      }
+      if (tags.includes("command-name") || tags.includes("command-args") || tags.includes("command-message")) {
+        return { key: "command-context", title: text.promptItemCommandContext };
+      }
+      return {
+        key: "tag-context",
+        title: text.promptItemTagContext + " " + fallbackIndex
+      };
+    }
+
+    function promptBlockTitle(block, visibleIndex) {
+      if (!block || !block.text) {
+        return text.promptItemSystemBlock + " " + visibleIndex;
+      }
+      const raw = String(block.text);
+      if (raw.includes("<melu-memory>")) return text.promptItemMemoryInjection;
+      if (raw.includes("CLAUDE.md")) return text.promptItemClaudeMd;
+      if (block.index === 0) return text.promptItemMainSystem;
+      return text.promptItemSystemBlock + " " + visibleIndex;
+    }
+
+    function promptBlockMeta(block) {
+      const meta = [];
+      if (block && block.type) meta.push(String(block.type));
+      if (block && typeof block.text === "string") meta.push(formatCharCount(block.text.length));
+      return meta.join(" · ");
+    }
+
+    function promptMessageMeta(message) {
+      const meta = [];
+      if (message && message.role) meta.push(String(message.role));
+      if (Array.isArray(message && message.contentTypes) && message.contentTypes.length) {
+        meta.push(message.contentTypes.join(", "));
+      }
+      if (message && typeof message.text === "string") {
+        meta.push(formatCharCount(message.text.length));
+      }
+      return meta.join(" · ");
+    }
+
+    function buildPromptGroups(snapshot) {
+      const groups = [];
+      const systemBlocks = Array.isArray(snapshot.systemBlocks) ? snapshot.systemBlocks : [];
+      const messages = Array.isArray(snapshot.messages) ? snapshot.messages : [];
+      const systemItems = [];
+      const memoryItems = [];
+      const userItems = [];
+      const extraItems = [];
+      const extraKinds = new Set();
+      let systemIndex = 0;
+      let userIndex = 0;
+      let toolResultIndex = 0;
+      let assistantIndex = 0;
+      let tagIndex = 0;
+      let memoryEntries = 0;
+
+      systemBlocks.forEach(function (block) {
+        const rawText = String(block && block.text ? block.text : "");
+        const item = {
+          title: promptBlockTitle(block, block && block.index === 0 ? 0 : systemIndex + 1),
+          meta: promptBlockMeta(block),
+          content: rawText || "--"
+        };
+
+        if (rawText.includes("<melu-memory>")) {
+          memoryEntries += countMeluMemoryEntries(rawText);
+          memoryItems.push(item);
+          return;
+        }
+
+        systemIndex += 1;
+        item.title = promptBlockTitle(block, systemIndex);
+        systemItems.push(item);
+      });
+
+      messages.forEach(function (message) {
+        const rawText = String(message && message.text ? message.text : "");
+        if (!rawText.trim()) return;
+
+        if (message.role === "user" && !message.toolResultOnly) {
+          userIndex += 1;
+          userItems.push({
+            title: text.promptItemUserInput + " " + userIndex,
+            meta: promptMessageMeta(message),
+            content: rawText
+          });
+          return;
+        }
+
+        if (message.toolResultOnly) {
+          toolResultIndex += 1;
+          extraKinds.add("tool-result");
+          extraItems.push({
+            title: text.promptItemToolResult + " " + toolResultIndex,
+            meta: promptMessageMeta(message),
+            content: rawText
+          });
+          return;
+        }
+
+        const tags = extractXmlTags(rawText);
+        if (tags.length) {
+          tagIndex += 1;
+          const tagInfo = inferPromptTagTitle(tags, tagIndex);
+          extraKinds.add(tagInfo.key);
+          extraItems.push({
+            title: tagInfo.title,
+            meta: promptMessageMeta(message),
+            content: rawText
+          });
+          return;
+        }
+
+        assistantIndex += 1;
+        extraKinds.add(message.role || "assistant");
+        extraItems.push({
+          title: text.promptItemAssistantContext + " " + assistantIndex,
+          meta: promptMessageMeta(message),
+          content: rawText
+        });
+      });
+
+      if (systemItems.length) {
+        groups.push({
+          title: text.promptGroupSystem,
+          summary: formatCountSummary(systemItems.length, text.countBlocks),
+          items: systemItems
+        });
+      }
+      if (memoryItems.length) {
+        groups.push({
+          title: text.promptGroupMemory,
+          summary: formatCountSummary(memoryEntries || memoryItems.length, memoryEntries ? text.countEntries : text.countBlocks),
+          items: memoryItems
+        });
+      }
+      if (userItems.length) {
+        groups.push({
+          title: text.promptGroupUser,
+          summary: formatCountSummary(userItems.length, text.countMessages),
+          items: userItems
+        });
+      }
+      if (extraItems.length) {
+        groups.push({
+          title: text.promptGroupTags,
+          summary: formatCountSummary(extraKinds.size || extraItems.length, text.countKinds),
+          items: extraItems
+        });
+      }
+
+      return groups;
     }
 
     function toolNativeDescription(tool) {
@@ -2303,82 +2682,121 @@ export function buildProxyTraceDashboardHtml(
       return "";
     }
 
-    function describeToolCall(tool) {
+    function toolActionTitle(tool) {
+      const name = String(tool && tool.name ? tool.name : "");
+      if (name === "Read" || name === "NotebookRead") return text.toolActionRead;
+      if (name === "Write") return text.toolActionWrite;
+      if (name === "Edit" || name === "MultiEdit" || name === "NotebookEdit") return text.toolActionEdit;
+      if (name === "LS") return text.toolActionBrowse;
+      if (name === "Glob") return text.toolActionSearchFiles;
+      if (name === "Grep") return text.toolActionSearchContent;
+      if (name === "Bash") return text.toolActionRunCommand;
+      if (name === "WebSearch") return text.toolActionWebSearch;
+      if (name === "WebFetch") return text.toolActionWebFetch;
+      if (name === "Agent") return text.toolActionAgent;
+      if (name === "TodoWrite") return text.toolActionTodo;
+      if (name === "AskUserQuestion") return text.toolActionAskUser;
+      if (name === "Skill") return text.toolActionSkill;
+      if (name === "ExitPlanMode") return text.toolActionPlanExit;
+      if (/^mcp__/i.test(name)) return text.toolActionMcp;
+      return text.toolActionGeneric;
+    }
+
+    function toolActionSummary(tool) {
       const name = String(tool && tool.name ? tool.name : "");
       const input = tool && tool.input && typeof tool.input === "object" ? tool.input : {};
+      const nativeDescription = toolNativeDescription(tool);
 
-      if (name === "Read") {
-        const path = input.file_path || input.path || "--";
-        const hasOffset = typeof input.offset === "number";
-        const hasLimit = typeof input.limit === "number";
-        const range = hasOffset ? " · " + input.offset + (hasLimit ? "-" + (input.offset + input.limit) : "") : "";
-        return "读取 " + path + range;
-      }
-      if (name === "Write") {
-        const path = input.file_path || "--";
-        const size = typeof input.content === "string" ? input.content.length + " chars" : "--";
-        return "写入 " + path + " · " + size;
-      }
-      if (name === "Edit") {
-        return "编辑 " + (input.file_path || "--");
-      }
-      if (name === "MultiEdit") {
-        const editCount = Array.isArray(input.edits) ? input.edits.length : 0;
-        return "批量编辑 " + (input.file_path || "--") + (editCount ? " · " + editCount + " edits" : "");
-      }
-      if (name === "NotebookEdit") {
-        return "编辑 Notebook " + (input.notebook_path || "--");
-      }
-      if (name === "NotebookRead") {
-        return "读取 Notebook " + (input.notebook_path || "--");
-      }
-      if (name === "LS") {
-        return "列目录 " + (input.path || ".");
-      }
-      if (name === "Glob") {
-        return "搜索文件 " + (input.pattern || "--");
-      }
-      if (name === "Grep") {
-        return "搜索内容 " + (input.pattern || "--");
-      }
-      if (name === "Bash") {
-        return toolNativeDescription(tool) || input.command || "Bash";
-      }
-      if (name === "WebSearch") {
-        return "搜索 " + (input.query || "--");
-      }
+      if (name === "Read") return compactPath(input.file_path || input.path || "--");
+      if (name === "NotebookRead") return compactPath(input.notebook_path || "--");
+      if (name === "Write") return compactPath(input.file_path || "--");
+      if (name === "Edit") return compactPath(input.file_path || "--");
+      if (name === "MultiEdit") return compactPath(input.file_path || "--");
+      if (name === "NotebookEdit") return compactPath(input.notebook_path || "--");
+      if (name === "LS") return compactPath(input.path || ".");
+      if (name === "Glob") return input.pattern || "--";
+      if (name === "Grep") return input.pattern || "--";
+      if (name === "Bash") return truncatePreview(nativeDescription || input.command || "--", 90);
+      if (name === "WebSearch") return truncatePreview(input.query || "--", 90);
       if (name === "WebFetch") {
-        return "抓取 " + (input.url || "--");
+        try {
+          return new URL(String(input.url || "")).hostname || String(input.url || "--");
+        } catch {
+          return truncatePreview(String(input.url || "--"), 90);
+        }
       }
       if (name === "Agent") {
-        const description = toolNativeDescription(tool) || input.description || "--";
-        const agentType = input.subagent_type ? " · " + input.subagent_type : "";
-        return "子 Agent " + description + agentType;
+        const agentType = input.subagent_type ? String(input.subagent_type) : "--";
+        const task = nativeDescription || input.description || input.prompt || "";
+        return task ? agentType + " · " + truncatePreview(String(task), 64) : agentType;
       }
       if (name === "TodoWrite") {
         const todoCount = Array.isArray(input.todos) ? input.todos.length : 0;
-        return "更新 Todo" + (todoCount ? " · " + todoCount + " 项" : "");
+        return formatCountSummary(todoCount, text.countEntries);
       }
       if (name === "AskUserQuestion") {
         const question = Array.isArray(input.questions) && input.questions[0] && input.questions[0].question
           ? input.questions[0].question
           : "--";
-        return "向用户提问 · " + question;
+        return truncatePreview(question, 90);
       }
-      if (name === "Skill") {
-        return "/" + String(input.skill || "--") + (input.args ? " " + input.args : "");
-      }
-      if (name === "ExitPlanMode") {
-        return "退出计划模式";
-      }
-      if (/^mcp__/i.test(name)) {
-        const parts = name.split("__");
-        if (parts.length >= 3) {
-          return "MCP · " + parts[1] + " / " + parts[2];
+      if (name === "Skill") return "/" + String(input.skill || "--");
+      if (name === "ExitPlanMode") return "--";
+      if (/^mcp__/i.test(name)) return name.split("__").slice(1).join(" / ") || name;
+      return truncatePreview(name || "--", 90);
+    }
+
+    function toolKeyFields(tool) {
+      const name = String(tool && tool.name ? tool.name : "");
+      const input = tool && tool.input && typeof tool.input === "object" ? tool.input : {};
+      const fields = [];
+
+      if (name === "Read") {
+        fields.push([text.toolLabelPath, input.file_path || input.path || "--"]);
+        if (typeof input.offset === "number" || typeof input.limit === "number") {
+          const rangeStart = typeof input.offset === "number" ? input.offset : 0;
+          const rangeEnd = typeof input.limit === "number" ? rangeStart + input.limit : null;
+          fields.push([text.toolLabelScope, rangeEnd === null ? String(rangeStart) : String(rangeStart) + "-" + String(rangeEnd)]);
         }
-        return name;
+      } else if (name === "NotebookRead" || name === "NotebookEdit") {
+        fields.push([text.toolLabelPath, input.notebook_path || "--"]);
+      } else if (name === "Write" || name === "Edit" || name === "MultiEdit") {
+        fields.push([text.toolLabelPath, input.file_path || "--"]);
+      } else if (name === "LS") {
+        fields.push([text.toolLabelPath, input.path || "."]);
+      } else if (name === "Glob") {
+        fields.push([text.toolLabelPattern, input.pattern || "--"]);
+        if (input.path) fields.push([text.toolLabelScope, input.path]);
+      } else if (name === "Grep") {
+        fields.push([text.toolLabelPattern, input.pattern || "--"]);
+        if (input.glob || input.path) fields.push([text.toolLabelScope, input.glob || input.path]);
+      } else if (name === "Bash") {
+        if (input.command) fields.push([text.toolLabelCommand, input.command]);
+        if (typeof input.timeout === "number") fields.push([text.toolLabelTimeout, String(input.timeout) + " ms"]);
+      } else if (name === "WebSearch") {
+        fields.push([text.toolLabelPattern, input.query || "--"]);
+      } else if (name === "WebFetch") {
+        fields.push([text.toolLabelUrl, input.url || "--"]);
+      } else if (name === "Agent") {
+        if (input.subagent_type) fields.push([text.toolLabelType, input.subagent_type]);
+        if (input.description || input.prompt) fields.push([text.toolLabelTask, input.description || input.prompt]);
+      } else if (name === "TodoWrite") {
+        fields.push([text.toolLabelCount, Array.isArray(input.todos) ? String(input.todos.length) : "0"]);
+      } else if (name === "AskUserQuestion") {
+        const question = Array.isArray(input.questions) && input.questions[0] && input.questions[0].question
+          ? input.questions[0].question
+          : "--";
+        fields.push([text.toolLabelTask, question]);
+      } else if (name === "Skill") {
+        fields.push([text.toolLabelType, input.skill || "--"]);
+        if (input.args) fields.push([text.toolLabelTask, input.args]);
+      } else if (/^mcp__/i.test(name)) {
+        fields.push([text.toolLabelType, name]);
       }
-      return name || text.toolCategoryUnknown;
+
+      return fields.filter(function (entry) {
+        return entry[1] !== undefined && entry[1] !== null && String(entry[1]).trim() !== "";
+      });
     }
 
     function readCachedSnapshot() {
@@ -2629,6 +3047,18 @@ export function buildProxyTraceDashboardHtml(
       }).join("");
     }
 
+    function renderNestedPromptItem(item, index) {
+      return '<details class="nested-item">'
+        + '<summary><div class="accordion-summary"><div class="accordion-title-wrap"><div class="accordion-title">'
+        + escapeHtml(item.title || ("Block " + (index + 1)))
+        + '</div></div></div></summary>'
+        + '<div class="nested-body">'
+        + (item.meta ? '<div class="block-meta">' + escapeHtml(item.meta) + '</div>' : '')
+        + '<div class="block-content">' + escapeHtml(item.content || "--") + '</div>'
+        + '</div>'
+        + '</details>';
+    }
+
     function renderPromptStructure(request) {
       const snapshot = request.promptSnapshot;
       if (!snapshot) {
@@ -2637,98 +3067,38 @@ export function buildProxyTraceDashboardHtml(
         return;
       }
 
-      const systemBlocks = Array.isArray(snapshot.systemBlocks) ? snapshot.systemBlocks : [];
-      const messages = Array.isArray(snapshot.messages) ? snapshot.messages : [];
+      const groups = buildPromptGroups(snapshot);
+      if (!groups.length) {
+        elements.drawerPromptStructure.innerHTML = '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
+      } else {
+        elements.drawerPromptStructure.innerHTML = groups.map(function (group) {
+          return '<details class="accordion-group">'
+            + '<summary><div class="accordion-summary">'
+            + '<div class="accordion-title-wrap">'
+            + '<div class="accordion-title">' + escapeHtml(group.title) + '</div>'
+            + '</div>'
+            + '<span class="accordion-badge">' + escapeHtml(group.summary) + '</span>'
+            + '</div></summary>'
+            + '<div class="accordion-body"><div class="nested-list">'
+            + group.items.map(function (item, index) { return renderNestedPromptItem(item, index); }).join("")
+            + '</div></div>'
+            + '</details>';
+        }).join("");
+      }
 
-      const systemHtml = systemBlocks.length
-        ? systemBlocks.map(function (block) {
-            const headings = extractMarkdownHeadings(block.text);
-            const xmlTags = extractXmlTags(block.text);
-            const tags = [
-              '<span class="insight-tag">' + escapeHtml(text.systemBlockLabel + "[" + block.index + "]") + '</span>',
-              '<span class="insight-tag muted">' + escapeHtml(block.type || "text") + '</span>',
-              '<span class="insight-tag muted">' + escapeHtml(String(block.text.length) + " chars") + '</span>'
-            ];
-            if (headings.length) {
-              tags.push('<span class="insight-tag muted">' + escapeHtml(text.headingCountLabel + " · " + headings.length) + '</span>');
-            }
-            if (xmlTags.length) {
-              tags.push('<span class="insight-tag muted">' + escapeHtml(text.xmlTagLabel + " · " + xmlTags.join(", ")) + '</span>');
-            }
-
-            const preview = block.text.includes("<melu-memory>")
-              ? truncatePreview(block.text.replace(/<[^>]+>/g, " ").replace(/\\s+/g, " ").trim(), 220)
-              : truncatePreview(block.text, 220);
-
-            return '<div class="insight-card">'
-              + '<div class="insight-head">'
-              + '<div class="insight-title-row">'
-              + '<div class="insight-title">' + escapeHtml(inferSystemBlockTitle(block)) + '</div>'
-              + '<div class="insight-subtitle">' + escapeHtml(preview || "--") + '</div>'
-              + '</div>'
-              + '</div>'
-              + '<div class="insight-tags">' + tags.join("") + '</div>'
-              + (headings.length
-                ? '<div class="insight-tags">' + headings.slice(0, 10).map(function (heading) {
-                    return '<span class="insight-tag muted">' + escapeHtml(heading) + '</span>';
-                  }).join("") + '</div>'
-                : '')
-              + '</div>';
-          }).join("")
-        : '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
-
-      const messageHtml = messages.length
-        ? messages.map(function (message) {
-            const xmlTags = extractXmlTags(message.text);
-            const tags = [
-              '<span class="insight-tag">' + escapeHtml(text.messageLabel + "[" + message.index + "]") + '</span>',
-              '<span class="insight-tag muted">' + escapeHtml(message.role) + '</span>'
-            ];
-            if (Array.isArray(message.contentTypes) && message.contentTypes.length) {
-              tags.push('<span class="insight-tag muted">' + escapeHtml(text.contentTypesLabel + " · " + message.contentTypes.join(", ")) + '</span>');
-            }
-            if (xmlTags.length) {
-              tags.push('<span class="insight-tag muted">' + escapeHtml(text.xmlTagLabel + " · " + xmlTags.join(", ")) + '</span>');
-            }
-            if (message.toolResultOnly) {
-              tags.push('<span class="insight-tag muted">tool_result only</span>');
-            }
-            return '<div class="insight-card">'
-              + '<div class="insight-title-row">'
-              + '<div class="insight-title">' + escapeHtml((message.role || "unknown") + " #" + message.index) + '</div>'
-              + '<div class="insight-subtitle">' + escapeHtml(text.promptMessagePreviewLabel) + '</div>'
-              + '</div>'
-              + '<div class="insight-tags">' + tags.join("") + '</div>'
-              + '<div class="insight-preview">' + escapeHtml(truncatePreview(message.text || "--", 320)) + '</div>'
-              + '</div>';
-          }).join("")
-        : '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
-
-      elements.drawerPromptStructure.innerHTML =
-        '<div class="insight-card">'
-          + '<div class="insight-title-row">'
-          + '<div class="insight-title">' + escapeHtml(text.promptBlocksTitle) + '</div>'
-          + '<div class="insight-subtitle">' + escapeHtml(String(systemBlocks.length) + " blocks") + '</div>'
-          + '</div>'
-          + '</div>'
-        + systemHtml
-        + '<div class="insight-card">'
-          + '<div class="insight-title-row">'
-          + '<div class="insight-title">' + escapeHtml(text.messageFlowTitle) + '</div>'
-          + '<div class="insight-subtitle">' + escapeHtml(String(messages.length) + " messages") + '</div>'
-          + '</div>'
-          + '</div>'
-        + messageHtml;
-
-      const rawPromptInner = '<details>'
-        + '<summary>' + escapeHtml(text.rawPromptAction) + '</summary>'
+      elements.drawerRawPrompt.innerHTML =
+        '<details class="accordion-group">'
+        + '<summary><div class="accordion-summary">'
+        + '<div class="accordion-title-wrap">'
+        + '<div class="accordion-title">' + escapeHtml(text.rawPromptTitle) + '</div>'
+        + '<div class="accordion-note">' + escapeHtml(text.rawRequestPayloadLabel) + '</div>'
+        + '</div>'
+        + '</div></summary>'
         + '<div class="raw-panel-body">'
         + (snapshot.rawRequestTruncated ? '<div class="raw-note">' + escapeHtml(text.rawPromptTruncatedNotice) + '</div>' : '')
-        + '<div class="raw-note">' + escapeHtml(text.rawRequestPayloadLabel) + '</div>'
         + '<pre class="raw-pre">' + escapeHtml(snapshot.rawRequestBody || "--") + '</pre>'
         + '</div>'
         + '</details>';
-      elements.drawerRawPrompt.innerHTML = rawPromptInner;
     }
 
     function renderToolActivity(request) {
@@ -2740,22 +3110,29 @@ export function buildProxyTraceDashboardHtml(
 
       elements.drawerToolActivity.innerHTML = toolCalls.map(function (tool, index) {
         const nativeDescription = toolNativeDescription(tool);
+        const keyFields = toolKeyFields(tool);
         const inputPayload = safeJson(tool.input);
-        return '<div class="tool-card">'
-          + '<div class="tool-head">'
-          + '<div class="tool-title-row">'
-          + '<div class="tool-title">' + escapeHtml(tool.name || "Tool") + '</div>'
-          + '<div class="tool-summary">' + escapeHtml(describeToolCall(tool)) + '</div>'
+        const detailsHtml = keyFields.map(function (entry) {
+          return '<div class="detail-row">'
+            + '<div class="detail-row-label">' + escapeHtml(entry[0]) + '</div>'
+            + '<div class="detail-row-value">' + escapeHtml(String(entry[1])) + '</div>'
+            + '</div>';
+        }).join("");
+
+        return '<details class="tool-item">'
+          + '<summary><div class="accordion-summary">'
+          + '<div class="accordion-title-wrap">'
+          + '<div class="accordion-title">' + escapeHtml(toolActionTitle(tool)) + '</div>'
+          + '<div class="accordion-note">' + escapeHtml(toolActionSummary(tool)) + '</div>'
           + '</div>'
-          + '<div class="tool-tags">'
-          + '<span class="tool-tag">' + escapeHtml(toolCategory(tool.name)) + '</span>'
-          + '<span class="tool-tag muted">' + escapeHtml(tool.kind || "tool_use") + '</span>'
-          + (tool.id ? '<span class="tool-tag muted">' + escapeHtml(truncatePreview(tool.id, 18)) + '</span>' : '')
-          + '</div>'
-          + '</div>'
+          + '<span class="accordion-badge">' + escapeHtml(tool.name || "Tool") + '</span>'
+          + '</div></summary>'
+          + '<div class="tool-body">'
           + (nativeDescription
-            ? '<div class="tool-meta"><div class="meta-label">' + escapeHtml(text.toolNativeDescriptionLabel) + '</div><div class="meta-value">' + escapeHtml(nativeDescription) + '</div></div>'
+            ? '<div class="detail-row"><div class="detail-row-label">' + escapeHtml(text.toolLabelDescription) + '</div><div class="detail-row-value">' + escapeHtml(nativeDescription) + '</div></div>'
             : '')
+          + (detailsHtml ? '<div class="detail-list">' + detailsHtml + '</div>' : '')
+          + '<div class="detail-row"><div class="detail-row-label">' + escapeHtml(text.toolLabelOriginalName) + '</div><div class="detail-row-value">' + escapeHtml(tool.name || "--") + '</div></div>'
           + '<div class="raw-panel"><details>'
           + '<summary>' + escapeHtml(text.rawToolInputAction + " #" + (index + 1)) + '</summary>'
           + '<div class="raw-panel-body">'
@@ -2763,7 +3140,8 @@ export function buildProxyTraceDashboardHtml(
           + '<pre class="raw-pre">' + escapeHtml(inputPayload || "--") + '</pre>'
           + '</div>'
           + '</details></div>'
-          + '</div>';
+          + '</div>'
+          + '</details>';
       }).join("");
     }
 
