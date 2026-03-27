@@ -56,6 +56,8 @@ export const UPSTREAM_ANTHROPIC = "https://api.anthropic.com";
 export interface MeluConfig {
   port: number;
   defaultMemory: string;
+  memoryEnabled: boolean;
+  autoOpenDashboard: boolean;
   embeddingModel: string;
   uiLanguage: UiLanguage | null;
   mirror: MirrorName | null;
@@ -65,6 +67,8 @@ export interface MeluConfig {
 const DEFAULT_CONFIG: MeluConfig = {
   port: DEFAULT_PORT,
   defaultMemory: DEFAULT_MEMORY_NAME,
+  memoryEnabled: true,
+  autoOpenDashboard: true,
   embeddingModel: EMBEDDING_MODEL_ID,
   uiLanguage: null,
   mirror: null,
@@ -108,6 +112,20 @@ function normalizeUiLanguage(value: unknown): UiLanguage | null {
   return null;
 }
 
+function normalizeMemoryEnabled(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return true;
+}
+
+function normalizeAutoOpenDashboard(value: unknown): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  return true;
+}
+
 function normalizeEmbeddingModel(value: unknown): string {
   if (typeof value !== "string" || value.trim() === "") {
     return EMBEDDING_MODEL_ID;
@@ -128,6 +146,8 @@ export function loadConfig(): MeluConfig {
       return {
         ...DEFAULT_CONFIG,
         ...data,
+        memoryEnabled: normalizeMemoryEnabled(data.memoryEnabled),
+        autoOpenDashboard: normalizeAutoOpenDashboard(data.autoOpenDashboard),
         embeddingModel: normalizeEmbeddingModel(data.embeddingModel),
         uiLanguage: normalizeUiLanguage(data.uiLanguage),
         mirror: normalizeMirror(data.mirror),
@@ -144,6 +164,8 @@ export function saveConfig(config: MeluConfig): void {
   const normalized: MeluConfig = {
     ...DEFAULT_CONFIG,
     ...config,
+    memoryEnabled: normalizeMemoryEnabled(config.memoryEnabled),
+    autoOpenDashboard: normalizeAutoOpenDashboard(config.autoOpenDashboard),
     embeddingModel: normalizeEmbeddingModel(config.embeddingModel),
     uiLanguage: normalizeUiLanguage(config.uiLanguage),
     mirror: normalizeMirror(config.mirror),

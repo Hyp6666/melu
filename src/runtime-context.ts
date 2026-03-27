@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
-import { SOCKETS_DIR } from "./config.js";
+import { getEmbedderDaemonSocketPath } from "./embedder-ipc.js";
 
 export const MELU_RUN_ID_ENV = "MELU_RUN_ID";
 export const MELU_EMBEDDER_SOCKET_ENV = "MELU_EMBEDDER_SOCKET";
@@ -25,7 +24,7 @@ export function normalizeMeluRunId(value: string | null | undefined): string {
 }
 
 export function buildEmbedderSocketPath(runId: string): string {
-  return join(SOCKETS_DIR, `embedder-${sanitizeRunId(runId)}.sock`);
+  return getEmbedderDaemonSocketPath(runId);
 }
 
 export function createMeluRuntimeContext(runId?: string | null): MeluRuntimeContext {

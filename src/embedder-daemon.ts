@@ -11,6 +11,7 @@ import {
   type EmbedderRequestType,
   encodeEmbedderMessage,
   getEmbedderDaemonSocketPath,
+  isWindowsNamedPipePath,
   isEmbedderDaemonRequest,
   normalizeEmbedderTexts,
   tryParseEmbedderMessage,
@@ -171,7 +172,7 @@ async function shutdownEmbedderDaemon(
   }
 
   try {
-    if (existsSync(state.socketPath)) {
+    if (!isWindowsNamedPipePath(state.socketPath) && existsSync(state.socketPath)) {
       unlinkSync(state.socketPath);
     }
   } catch {
@@ -262,7 +263,8 @@ function attachSocketHandlers(socket: Socket, state: RuntimeState): void {
 }
 
 async function ensureSocketPathAvailable(socketPath: string): Promise<void> {
-  if (!existsSync(socketPath)) return;
+  const shouldProbeEndpoint = isWindowsNamedPipePath(socketPath) || existsSync(socketPath);
+  if (!shouldProbeEndpoint) return;
 
   const isLiveSocket = await new Promise<boolean>((resolve) => {
     const probe = createConnection({ path: socketPath });
@@ -291,10 +293,12 @@ async function ensureSocketPathAvailable(socketPath: string): Promise<void> {
     throw new Error(`Embedder daemon already appears to be running at ${socketPath}`);
   }
 
-  try {
-    unlinkSync(socketPath);
-  } catch {
-    // Ignore stale cleanup failures. Listen will fail if the path is genuinely busy.
+  if (!isWindowsNamedPipePath(socketPath)) {
+    try {
+      unlinkSync(socketPath);
+    } catch {
+      // Ignore stale cleanup failures. Listen will fail if the path is genuinely busy.
+    }
   }
 }
 
@@ -308,10 +312,6 @@ export async function startEmbedderDaemon(options: EmbedderDaemonOptions): Promi
   const idleTimeoutMs = options.idleTimeoutMs ?? EMBEDDER_DAEMON_DEFAULT_IDLE_TIMEOUT_MS;
   const idleCheckMs = options.idleCheckMs ?? EMBEDDER_DAEMON_DEFAULT_IDLE_CHECK_MS;
   const modelId = options.modelId ?? config.embeddingModel;
-
-  if (process.platform === "win32") {
-    throw new Error("Embedder daemon currently expects a Unix socket path and is not wired for Windows yet.");
-  }
 
   await ensureSocketPathAvailable(socketPath);
 

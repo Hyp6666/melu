@@ -1,8 +1,16 @@
 {
   "name": "@hope666/melu",
-  "version": "1.0.2",
+  "version": "2.0.3",
   "description": "Transparent AI memory agent — intercepts LLM API calls, injects persistent memory, extracts new memories automatically.",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hyp6666/melu.git"
+  },
+  "homepage": "https://github.com/Hyp6666/melu#readme",
+  "bugs": {
+    "url": "https://github.com/Hyp6666/melu/issues"
+  },
   "bin": {
     "melu": "dist/cli.js"
   },

@@ -29,6 +29,9 @@ melu-spec.md
 # npm pack artifacts
 *.tgz
 
+# Temporary release docs
+README.npm.md
+
 # Debug / temp
 show.html
 

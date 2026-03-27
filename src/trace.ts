@@ -20,6 +20,8 @@ export interface ProxyTracePromptMessage {
   contentTypes: string[];
   text: string;
   toolResultOnly: boolean;
+  cleanedText?: string;
+  hasSystemTags?: boolean;
 }
 
 export interface ProxyTracePromptSnapshot {
@@ -27,6 +29,21 @@ export interface ProxyTracePromptSnapshot {
   messages: ProxyTracePromptMessage[];
   rawRequestBody: string;
   rawRequestTruncated?: boolean;
+}
+
+export interface ProxyTraceResponseBlock {
+  index: number;
+  type: string;
+  text: string;
+  id?: string | null;
+  name?: string;
+}
+
+export interface ProxyTraceResponseSnapshot {
+  role: string;
+  blocks: ProxyTraceResponseBlock[];
+  stopReason?: string | null;
+  truncated?: boolean;
 }
 
 export interface ProxyTraceToolCall {
@@ -39,6 +56,10 @@ export interface ProxyTraceToolCall {
 export interface ProxyTraceEvent {
   seq: number;
   requestId: string;
+  requestKind?: string;
+  turnId?: string;
+  turnSeq?: number;
+  turnPreview?: string;
   type: ProxyTraceEventType;
   timestamp: string;
   method: string;
@@ -51,8 +72,11 @@ export interface ProxyTraceEvent {
   durationMs?: number;
   inputTokens?: number;
   outputTokens?: number;
+  cacheCreationTokens?: number;
+  cacheReadTokens?: number;
   note?: string;
   promptSnapshot?: ProxyTracePromptSnapshot;
+  responseSnapshot?: ProxyTraceResponseSnapshot;
   toolCalls?: ProxyTraceToolCall[];
 }
 
@@ -91,6 +115,8 @@ interface DashboardCopy {
   filterCompleted: string;
   searchPlaceholder: string;
   tableSeq: string;
+  tablePrompt: string;
+  tableRequests: string;
   tableRequestId: string;
   tableAgent: string;
   tableType: string;
@@ -162,10 +188,30 @@ interface DashboardCopy {
   actionRefresh: string;
   actionSettings: string;
   actionAlerts: string;
+  settingsTitle: string;
+  settingsLanguageLabel: string;
+  settingsMirrorLabel: string;
+  settingsMemoryLabel: string;
+  settingsMemoryTooltip: string;
+  settingsMemoryReady: string;
+  settingsMemoryMissing: string;
+  settingsAutoOpenLabel: string;
+  settingsAutoOpenTooltip: string;
+  settingsNextRunBadge: string;
+  settingsSaveAction: string;
+  settingsSaving: string;
+  settingsSaved: string;
+  openTraceAction: string;
   disconnectedStatus: string;
   offlineSnapshot: string;
   timelineLegend: string;
+  timelineRequestUnit: string;
+  turnLabel: string;
+  turnRailTitle: string;
+  turnRailRequest: string;
+  turnFallbackPreview: string;
   promptInsightTitle: string;
+  answerInsightTitle: string;
   promptStructureTitle: string;
   promptBlocksTitle: string;
   messageFlowTitle: string;
@@ -173,6 +219,7 @@ interface DashboardCopy {
   rawPromptAction: string;
   rawToolInputAction: string;
   noPromptSnapshot: string;
+  noAnswerSnapshot: string;
   noToolActivity: string;
   rawPromptTruncatedNotice: string;
   systemBlockLabel: string;
@@ -197,6 +244,9 @@ interface DashboardCopy {
   promptGroupMemory: string;
   promptGroupUser: string;
   promptGroupTags: string;
+  answerGroupReply: string;
+  answerGroupThinking: string;
+  answerGroupTools: string;
   promptItemMainSystem: string;
   promptItemSystemBlock: string;
   promptItemMemoryInjection: string;
@@ -204,6 +254,9 @@ interface DashboardCopy {
   promptItemToolResult: string;
   promptItemAssistantContext: string;
   promptItemTagContext: string;
+  answerItemReply: string;
+  answerItemThinking: string;
+  answerItemTool: string;
   promptItemClaudeMd: string;
   promptItemSystemReminder: string;
   promptItemTaskNotification: string;
@@ -227,12 +280,31 @@ interface DashboardCopy {
   toolLabelUrl: string;
   toolLabelCount: string;
   toolActionRead: string;
+  toolActionReadConfig: string;
+  toolActionReadDocs: string;
+  toolActionReadNotebook: string;
   toolActionWrite: string;
+  toolActionWriteConfig: string;
+  toolActionWriteDocs: string;
   toolActionEdit: string;
+  toolActionEditConfig: string;
+  toolActionEditDocs: string;
+  toolActionEditNotebook: string;
+  toolActionBatchEdit: string;
   toolActionBrowse: string;
   toolActionSearchFiles: string;
+  toolActionSearchSource: string;
+  toolActionSearchDocs: string;
   toolActionSearchContent: string;
   toolActionRunCommand: string;
+  toolActionScanFiles: string;
+  toolActionCountFiles: string;
+  toolActionRunTests: string;
+  toolActionBuildProject: string;
+  toolActionStartService: string;
+  toolActionInstallDeps: string;
+  toolActionCheckStatus: string;
+  toolActionGit: string;
   toolActionWebSearch: string;
   toolActionWebFetch: string;
   toolActionAgent: string;
@@ -242,6 +314,30 @@ interface DashboardCopy {
   toolActionPlanExit: string;
   toolActionMcp: string;
   toolActionGeneric: string;
+  debugTitle: string;
+  debugNote: string;
+  inputShortLabel: string;
+  outputShortLabel: string;
+  requestShortLabel: string;
+  responseShortLabel: string;
+  copyAction: string;
+  copiedAction: string;
+  closeAction: string;
+  cacheCreationLabel: string;
+  cacheReadLabel: string;
+  cacheHitLabel: string;
+  newTokensLabel: string;
+  cachedTokensLabel: string;
+  sentTokensLabel: string;
+  railUserInput: string;
+  railFinalResponse: string;
+  railTaskStart: string;
+  railAnalyzeResults: string;
+  railComposeAnswer: string;
+  railConnectivityCheck: string;
+  deltaSame: string;
+  deltaNew: string;
+  deltaChanged: string;
 }
 
 const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
@@ -278,8 +374,10 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     filterInFlight: "In-flight",
     filterError: "Error",
     filterCompleted: "Completed",
-    searchPlaceholder: "Search request ID...",
+    searchPlaceholder: "Search prompt or turn...",
     tableSeq: "Seq",
+    tablePrompt: "User Prompt",
+    tableRequests: "Requests",
     tableRequestId: "Request ID",
     tableAgent: "Agent",
     tableType: "Type",
@@ -351,17 +449,38 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     actionRefresh: "Refresh",
     actionSettings: "Settings",
     actionAlerts: "Alerts",
+    settingsTitle: "Settings",
+    settingsLanguageLabel: "Language",
+    settingsMirrorLabel: "Download Source",
+    settingsMemoryLabel: "Load Memories",
+    settingsMemoryTooltip: "Applies on the next melu run. When enabled, Melu starts the embedding runtime and re-enables memory retrieval and extraction. If the model is missing, saving will prepare it with the selected source.",
+    settingsMemoryReady: "Model ready",
+    settingsMemoryMissing: "Model missing",
+    settingsAutoOpenLabel: "Auto-open Dashboard",
+    settingsAutoOpenTooltip: "Applies on the next melu run. When startup succeeds, Melu will open the local dashboard in your browser automatically.",
+    settingsNextRunBadge: "Next run",
+    settingsSaveAction: "Save",
+    settingsSaving: "Saving...",
+    settingsSaved: "Saved. Reloading...",
+    openTraceAction: "Open trace file",
     disconnectedStatus: "Disconnected",
     offlineSnapshot: "Offline snapshot",
-    timelineLegend: "Height = request duration (seconds, scaled relatively) · Color = model",
-    promptInsightTitle: "Prompt Insight",
+    timelineLegend: "Color = model",
+    timelineRequestUnit: "requests",
+    turnLabel: "Turn",
+    turnRailTitle: "Requests",
+    turnRailRequest: "Request",
+    turnFallbackPreview: "Ungrouped request",
+    promptInsightTitle: "↑ · Prompt",
+    answerInsightTitle: "↓ · Answer",
     promptStructureTitle: "Structured Summary",
     promptBlocksTitle: "System Blocks",
     messageFlowTitle: "Message Flow",
-    rawPromptTitle: "Raw Prompt",
-    rawPromptAction: "Open final raw payload",
+    rawPromptTitle: "Raw Payload",
+    rawPromptAction: "Open raw payload",
     rawToolInputAction: "Open raw tool input",
     noPromptSnapshot: "No prompt snapshot was captured for this request.",
+    noAnswerSnapshot: "No model answer was captured for this request.",
     noToolActivity: "No tool use was captured for this request.",
     rawPromptTruncatedNotice: "The raw payload was truncated locally for dashboard rendering.",
     systemBlockLabel: "system",
@@ -382,17 +501,23 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     promptMessagePreviewLabel: "Preview",
     rawRequestPayloadLabel: "Raw request payload",
     rawToolInputLabel: "Raw tool input",
-    promptGroupSystem: "System",
+    promptGroupSystem: "System Prompt",
     promptGroupMemory: "Memory",
-    promptGroupUser: "User",
-    promptGroupTags: "Added Context",
-    promptItemMainSystem: "Main System",
-    promptItemSystemBlock: "System Block",
+    promptGroupUser: "User Input",
+    promptGroupTags: "Runtime Context",
+    answerGroupReply: "Text Reply",
+    answerGroupThinking: "Thinking",
+    answerGroupTools: "Tool Instructions",
+    promptItemMainSystem: "Base System",
+    promptItemSystemBlock: "System Segment",
     promptItemMemoryInjection: "Memory Injection",
     promptItemUserInput: "User Input",
     promptItemToolResult: "Tool Result",
-    promptItemAssistantContext: "Assistant Context",
-    promptItemTagContext: "Tagged Context",
+    promptItemAssistantContext: "Assistant Message",
+    promptItemTagContext: "Runtime Context",
+    answerItemReply: "Reply",
+    answerItemThinking: "Thinking",
+    answerItemTool: "Tool Call",
     promptItemClaudeMd: "CLAUDE.md",
     promptItemSystemReminder: "System Reminder",
     promptItemTaskNotification: "Task Notification",
@@ -416,12 +541,31 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     toolLabelUrl: "URL",
     toolLabelCount: "Count",
     toolActionRead: "Read File",
+    toolActionReadConfig: "Read Config",
+    toolActionReadDocs: "Read Docs",
+    toolActionReadNotebook: "Read Notebook",
     toolActionWrite: "Write File",
+    toolActionWriteConfig: "Write Config",
+    toolActionWriteDocs: "Write Docs",
     toolActionEdit: "Edit File",
+    toolActionEditConfig: "Edit Config",
+    toolActionEditDocs: "Edit Docs",
+    toolActionEditNotebook: "Edit Notebook",
+    toolActionBatchEdit: "Batch Edit",
     toolActionBrowse: "Browse Files",
     toolActionSearchFiles: "Find Files",
+    toolActionSearchSource: "Find Source",
+    toolActionSearchDocs: "Find Docs",
     toolActionSearchContent: "Search Content",
     toolActionRunCommand: "Run Command",
+    toolActionScanFiles: "Scan Files",
+    toolActionCountFiles: "Count Files",
+    toolActionRunTests: "Run Tests",
+    toolActionBuildProject: "Build Project",
+    toolActionStartService: "Start Service",
+    toolActionInstallDeps: "Install Deps",
+    toolActionCheckStatus: "Check Status",
+    toolActionGit: "Git Action",
     toolActionWebSearch: "Search Web",
     toolActionWebFetch: "Fetch Page",
     toolActionAgent: "Spawn Subagent",
@@ -431,6 +575,30 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     toolActionPlanExit: "Exit Plan",
     toolActionMcp: "Call MCP",
     toolActionGeneric: "Use Tool",
+    debugTitle: "Debug",
+    debugNote: "Low-priority transport and runtime fields",
+    inputShortLabel: "in",
+    outputShortLabel: "out",
+    requestShortLabel: "req",
+    responseShortLabel: "resp",
+    copyAction: "Copy",
+    copiedAction: "Copied",
+    closeAction: "Close",
+    cacheCreationLabel: "Cache Write",
+    cacheReadLabel: "Cache Read",
+    cacheHitLabel: "hit",
+    newTokensLabel: "new",
+    cachedTokensLabel: "cached",
+    sentTokensLabel: "sent",
+    railUserInput: "User Input",
+    railFinalResponse: "Response",
+    railTaskStart: "Task Start",
+    railAnalyzeResults: "Analyze Results",
+    railComposeAnswer: "Compose Answer",
+    railConnectivityCheck: "Connectivity Check",
+    deltaSame: "= same",
+    deltaNew: "new",
+    deltaChanged: "changed",
   },
   "zh-CN": {
     pageTitle: "Melu Trace",
@@ -465,8 +633,10 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     filterInFlight: "进行中",
     filterError: "错误",
     filterCompleted: "已完成",
-    searchPlaceholder: "搜索请求 ID...",
+    searchPlaceholder: "搜索用户输入或轮次...",
     tableSeq: "序号",
+    tablePrompt: "用户输入",
+    tableRequests: "请求数",
     tableRequestId: "请求 ID",
     tableAgent: "代理",
     tableType: "类型",
@@ -538,17 +708,38 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     actionRefresh: "刷新",
     actionSettings: "设置",
     actionAlerts: "提醒",
+    settingsTitle: "设置",
+    settingsLanguageLabel: "语言",
+    settingsMirrorLabel: "下载源",
+    settingsMemoryLabel: "加载运行记忆",
+    settingsMemoryTooltip: "对下一次 melu run 生效。开启后会重新启用 embedding 运行时、记忆检索和记忆提取；如果模型尚未下载，保存时会按当前下载源先准备模型。",
+    settingsMemoryReady: "模型已下载",
+    settingsMemoryMissing: "模型未下载",
+    settingsAutoOpenLabel: "自动打开观察台",
+    settingsAutoOpenTooltip: "对下一次 melu run 生效。启动成功后，Melu 会自动在浏览器里打开本地观察台页面。",
+    settingsNextRunBadge: "下次运行生效",
+    settingsSaveAction: "保存",
+    settingsSaving: "保存中...",
+    settingsSaved: "已保存，正在刷新...",
+    openTraceAction: "打开 trace 文件",
     disconnectedStatus: "已断开",
     offlineSnapshot: "离线快照",
-    timelineLegend: "柱高 = 请求耗时（按秒相对缩放） · 颜色 = 模型",
-    promptInsightTitle: "Prompt 透视",
+    timelineLegend: "颜色 = 模型",
+    timelineRequestUnit: "条请求",
+    turnLabel: "轮次",
+    turnRailTitle: "请求链",
+    turnRailRequest: "请求",
+    turnFallbackPreview: "未归组请求",
+    promptInsightTitle: "↑ · Prompt",
+    answerInsightTitle: "↓ · Answer",
     promptStructureTitle: "结构化摘要",
     promptBlocksTitle: "System Blocks",
     messageFlowTitle: "消息结构",
-    rawPromptTitle: "原始 Prompt",
-    rawPromptAction: "展开最终原始载荷",
+    rawPromptTitle: "原始信息",
+    rawPromptAction: "查看原始信息",
     rawToolInputAction: "展开原始工具输入",
     noPromptSnapshot: "这条请求没有捕获到 prompt 快照。",
+    noAnswerSnapshot: "这条请求没有捕获到模型响应。",
     noToolActivity: "这条请求没有捕获到工具调用。",
     rawPromptTruncatedNotice: "原始载荷过长，已在本地仪表板里截断展示。",
     systemBlockLabel: "system",
@@ -569,17 +760,23 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     promptMessagePreviewLabel: "预览",
     rawRequestPayloadLabel: "原始请求载荷",
     rawToolInputLabel: "原始工具输入",
-    promptGroupSystem: "系统",
+    promptGroupSystem: "系统提示",
     promptGroupMemory: "记忆",
-    promptGroupUser: "用户",
-    promptGroupTags: "附加标签",
-    promptItemMainSystem: "主系统",
-    promptItemSystemBlock: "系统块",
+    promptGroupUser: "用户输入",
+    promptGroupTags: "运行时上下文",
+    answerGroupReply: "文本回复",
+    answerGroupThinking: "思考片段",
+    answerGroupTools: "工具指令",
+    promptItemMainSystem: "基础系统",
+    promptItemSystemBlock: "系统段",
     promptItemMemoryInjection: "记忆注入",
     promptItemUserInput: "用户输入",
     promptItemToolResult: "工具结果",
-    promptItemAssistantContext: "助手上下文",
-    promptItemTagContext: "标签上下文",
+    promptItemAssistantContext: "助手消息",
+    promptItemTagContext: "运行时上下文",
+    answerItemReply: "回复",
+    answerItemThinking: "思考",
+    answerItemTool: "工具调用",
     promptItemClaudeMd: "CLAUDE.md",
     promptItemSystemReminder: "系统提醒",
     promptItemTaskNotification: "任务通知",
@@ -603,12 +800,31 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     toolLabelUrl: "地址",
     toolLabelCount: "数量",
     toolActionRead: "读取文件",
+    toolActionReadConfig: "读取配置",
+    toolActionReadDocs: "读取文档",
+    toolActionReadNotebook: "读取笔记",
     toolActionWrite: "写入文件",
+    toolActionWriteConfig: "写入配置",
+    toolActionWriteDocs: "写入文档",
     toolActionEdit: "修改文件",
+    toolActionEditConfig: "修改配置",
+    toolActionEditDocs: "修改文档",
+    toolActionEditNotebook: "修改笔记",
+    toolActionBatchEdit: "批量改写",
     toolActionBrowse: "浏览目录",
     toolActionSearchFiles: "搜索文件",
+    toolActionSearchSource: "搜索源码",
+    toolActionSearchDocs: "搜索文档",
     toolActionSearchContent: "搜索内容",
     toolActionRunCommand: "执行命令",
+    toolActionScanFiles: "扫描文件",
+    toolActionCountFiles: "统计文件",
+    toolActionRunTests: "运行测试",
+    toolActionBuildProject: "构建项目",
+    toolActionStartService: "启动服务",
+    toolActionInstallDeps: "安装依赖",
+    toolActionCheckStatus: "检查状态",
+    toolActionGit: "Git 操作",
     toolActionWebSearch: "联网搜索",
     toolActionWebFetch: "抓取网页",
     toolActionAgent: "派出子代理",
@@ -618,6 +834,30 @@ const DASHBOARD_COPY: Record<TraceDashboardLanguage, DashboardCopy> = {
     toolActionPlanExit: "结束规划",
     toolActionMcp: "调用 MCP",
     toolActionGeneric: "调用工具",
+    debugTitle: "Debug",
+    debugNote: "低优先级传输与运行字段",
+    inputShortLabel: "输入",
+    outputShortLabel: "输出",
+    requestShortLabel: "请求",
+    responseShortLabel: "响应",
+    copyAction: "复制",
+    copiedAction: "已复制",
+    closeAction: "关闭",
+    cacheCreationLabel: "缓存写入",
+    cacheReadLabel: "缓存命中",
+    cacheHitLabel: "命中",
+    newTokensLabel: "新增",
+    cachedTokensLabel: "缓存",
+    sentTokensLabel: "发送",
+    railUserInput: "用户输入",
+    railFinalResponse: "回复",
+    railTaskStart: "任务启动",
+    railAnalyzeResults: "分析结果",
+    railComposeAnswer: "整理答复",
+    railConnectivityCheck: "连通测试",
+    deltaSame: "= 同上",
+    deltaNew: "新增",
+    deltaChanged: "变动",
   },
 };
 
@@ -673,6 +913,18 @@ export function buildProxyTraceDashboardHtml(
   const serializedRunId = JSON.stringify(runId);
   const serializedCopy = JSON.stringify(copy);
   const serializedTracePath = JSON.stringify(`~/.melu/traces/${runId}/events.jsonl`);
+  const serializedTraceFileHref = JSON.stringify("/__melu/trace-file");
+  const iconMetadata = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3.5h10M3 8h10M3 12.5h10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/><circle cx="4" cy="3.5" r="1" fill="currentColor"/><circle cx="12" cy="8" r="1" fill="currentColor"/><circle cx="7" cy="12.5" r="1" fill="currentColor"/></svg>';
+  const iconTransport = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 5h7m0 0-2-2m2 2-2 2M13 11H6m0 0 2-2m-2 2 2 2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>';
+  const iconPrompt = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3 2.8 8 6 13M10 3l3.2 5L10 13M8.8 2.5 7.2 13.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.4"/></svg>';
+  const iconCopy = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="5.5" y="3.5" width="7" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 10.5V5.5A1.5 1.5 0 0 1 5 4h4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  const iconCheck = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3.5 8.4 2.8 2.8 6.2-6.4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"/></svg>';
+  const iconPending = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v4l2.8 1.8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"/><circle cx="8" cy="8" r="5.1" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+  const iconClose = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.4"/></svg>';
+  const serializedIconCopy = JSON.stringify(iconCopy);
+  const serializedIconCheck = JSON.stringify(iconCheck);
+  const serializedIconPending = JSON.stringify(iconPending);
+  const serializedIconClose = JSON.stringify(iconClose);
 
   return `<!doctype html>
 <html lang="${language}">
@@ -882,8 +1134,8 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .action-chip:hover {
-      color: var(--primary);
-      border-color: rgba(83, 42, 168, 0.3);
+      color: var(--ink);
+      border-color: rgba(23, 23, 23, 0.18);
       transform: translateY(-1px);
     }
 
@@ -998,11 +1250,15 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .status-pill[data-tone="steady"] {
-      color: var(--primary);
+      color: var(--ink);
     }
 
     .status-pill[data-tone="warning"] {
       color: var(--secondary);
+    }
+
+    .status-pill[data-tone="live"] {
+      color: var(--success);
     }
 
     .status-dot {
@@ -1012,6 +1268,38 @@ export function buildProxyTraceDashboardHtml(
       background: currentColor;
       box-shadow: 0 0 12px currentColor;
       flex: none;
+    }
+
+    .session-status-wrap {
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .live-indicator {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(115, 92, 0, 0.12);
+      color: var(--secondary);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      animation: live-pill-pulse 1.35s ease-in-out infinite;
+    }
+
+    .live-indicator.is-visible {
+      display: inline-flex;
+    }
+
+    @keyframes live-pill-pulse {
+      0%, 100% { opacity: 0.72; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-1px); }
     }
 
     .empty-view,
@@ -1116,7 +1404,7 @@ export function buildProxyTraceDashboardHtml(
 
     .metric-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px;
     }
 
@@ -1155,7 +1443,7 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .metric-mark.primary {
-      color: var(--primary);
+      color: var(--ink);
     }
 
     .metric-mark.secondary {
@@ -1185,6 +1473,29 @@ export function buildProxyTraceDashboardHtml(
       color: var(--muted);
       font-size: 11px;
       font-family: var(--mono);
+    }
+
+    .metric-breakdown {
+      margin-top: 14px;
+      display: grid;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .metric-breakdown-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .metric-breakdown-row strong {
+      color: var(--ink);
+      font-weight: 700;
     }
 
     .panel {
@@ -1220,16 +1531,74 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .timeline-body {
-      height: 210px;
-      padding: 20px 22px 26px;
+      position: relative;
+      height: 226px;
+      overflow: hidden;
+    }
+
+    .timeline-stage {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      top: 18px;
+      bottom: 34px;
+    }
+
+    .timeline-grid-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: rgba(23, 23, 23, 0.06);
+      pointer-events: none;
+    }
+
+    .timeline-baseline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 1px;
+      background: rgba(23, 23, 23, 0.12);
+      pointer-events: none;
+    }
+
+    .timeline-axis {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 12px;
       display: flex;
-      align-items: end;
-      gap: 8px;
-      overflow-x: auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: none;
+    }
+
+    .timeline-axis-label {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1;
+      font-family: var(--mono);
+      letter-spacing: 0.02em;
+    }
+
+    .timeline-empty {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 12px;
+      text-align: left;
     }
 
     .timeline-bar {
       appearance: none;
+      position: absolute;
+      left: 0;
+      bottom: 0;
       border: 0;
       border-radius: 999px 999px 5px 5px;
       width: 12px;
@@ -1237,13 +1606,14 @@ export function buildProxyTraceDashboardHtml(
       padding: 0;
       cursor: pointer;
       opacity: 0.92;
+      transform: translateX(-50%);
       transition: transform 140ms ease, opacity 140ms ease;
-      background: rgba(83, 42, 168, 0.18);
-      box-shadow: inset 0 0 0 1px rgba(83, 42, 168, 0.08);
+      background: rgba(23, 23, 23, 0.14);
+      box-shadow: inset 0 0 0 1px rgba(23, 23, 23, 0.08);
     }
 
     .timeline-bar:hover {
-      transform: translateY(-2px);
+      transform: translate(-50%, -2px);
       opacity: 1;
     }
 
@@ -1290,13 +1660,13 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .filter-button:hover {
-      border-color: rgba(83, 42, 168, 0.24);
-      color: var(--primary);
+      border-color: rgba(23, 23, 23, 0.16);
+      color: var(--ink);
     }
 
     .filter-button.active {
-      background: var(--primary);
-      border-color: var(--primary);
+      background: var(--ink);
+      border-color: var(--ink);
       color: #ffffff;
     }
 
@@ -1316,24 +1686,32 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .search-wrap input:focus {
-      border-color: rgba(83, 42, 168, 0.28);
-      box-shadow: 0 0 0 3px rgba(83, 42, 168, 0.07);
+      border-color: rgba(23, 23, 23, 0.18);
+      box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.06);
+    }
+
+    .request-panel {
+      overflow: visible;
     }
 
     .request-table-wrap {
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: visible;
+      position: relative;
+      z-index: 0;
     }
 
     .request-table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      min-width: 980px;
+      min-width: 760px;
     }
 
     .request-table thead th {
       position: sticky;
       top: 0;
+      z-index: 2;
       background: rgba(245, 241, 235, 0.9);
       border-bottom: 1px solid var(--line-soft);
       color: var(--muted);
@@ -1346,10 +1724,22 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .request-table tbody td {
+      position: relative;
+      z-index: 1;
       padding: 16px 18px;
       border-bottom: 1px solid var(--line-soft);
       font-size: 12px;
       vertical-align: middle;
+    }
+
+    .request-table tbody td.request-token-cell:hover,
+    .request-table tbody td.request-token-cell:focus-within {
+      z-index: 5004;
+    }
+
+    .request-table thead th:nth-child(2),
+    .request-table tbody td:nth-child(2) {
+      padding-left: 8px;
     }
 
     .request-row {
@@ -1362,7 +1752,7 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .request-row.is-selected {
-      background: rgba(83, 42, 168, 0.06);
+      background: rgba(23, 23, 23, 0.045);
     }
 
     .badge {
@@ -1471,8 +1861,8 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .timeline-bar.generic {
-      background: linear-gradient(180deg, rgba(83, 42, 168, 0.92), rgba(83, 42, 168, 0.16));
-      box-shadow: inset 0 0 0 1px rgba(83, 42, 168, 0.1);
+      background: linear-gradient(180deg, rgba(23, 23, 23, 0.82), rgba(23, 23, 23, 0.14));
+      box-shadow: inset 0 0 0 1px rgba(23, 23, 23, 0.1);
     }
 
     .timeline-bar.is-error {
@@ -1486,8 +1876,8 @@ export function buildProxyTraceDashboardHtml(
     }
 
     @keyframes pulse-track {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-2px); }
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-2px); }
     }
 
     .seq-stack {
@@ -1512,6 +1902,61 @@ export function buildProxyTraceDashboardHtml(
       font-size: 11px;
     }
 
+    .turn-prompt {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.55;
+    }
+
+    .duration-cell {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .duration-cell.has-tooltip:hover,
+    .duration-cell.has-tooltip:focus-within {
+      z-index: 5002;
+    }
+
+    .duration-track {
+      position: relative;
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(23, 23, 23, 0.08);
+      overflow: hidden;
+    }
+
+    .duration-bar {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: rgba(23, 23, 23, 0.42);
+    }
+
+    .duration-bar.is-error {
+      background: rgba(157, 31, 31, 0.7);
+    }
+
+    .duration-bar.is-in-flight {
+      background: rgba(115, 92, 0, 0.72);
+    }
+
+    .table-token-fill {
+      display: block;
+      height: 100%;
+    }
+
+    .table-token-fill > .token-meter-bar {
+      width: 100%;
+      height: 100%;
+    }
+
     .drawer-backdrop {
       position: fixed;
       inset: 0;
@@ -1525,29 +1970,56 @@ export function buildProxyTraceDashboardHtml(
       opacity: 1;
     }
 
-    .drawer {
+    .detail-cluster {
       position: fixed;
       top: clamp(22px, 5vh, 42px);
       left: 50%;
       bottom: clamp(22px, 5vh, 42px);
-      width: min(1120px, calc(100vw - 88px));
+      width: min(480px, calc(100vw - 32px));
+      z-index: 80;
+      pointer-events: none;
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(calc(-50% + var(--drag-x)), calc(18px + var(--drag-y))) scale(0.985);
+      opacity: 0;
+      transition: transform 220ms ease, opacity 220ms ease;
+      overflow: visible;
+    }
+
+    .detail-cluster.is-open {
+      transform: translate(calc(-50% + var(--drag-x)), var(--drag-y)) scale(1);
+      opacity: 1;
+    }
+
+    .detail-cluster.is-dragging,
+    .drawer.is-dragging,
+    .detail-rail-panel.is-dragging,
+    .floating-window.is-dragging,
+    .prompt-item-panel.is-dragging,
+    .drawer-overlay.is-dragging {
+      transition: none;
+    }
+
+    .detail-cluster > * {
+      pointer-events: auto;
+    }
+
+    .drawer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
       background: rgba(251, 249, 246, 0.98);
       border: 1px solid var(--line);
       border-radius: 28px;
       box-shadow: 0 24px 80px rgba(35, 29, 23, 0.18);
-      z-index: 70;
+      z-index: 1;
       display: flex;
       flex-direction: column;
-      transform: translate(-50%, 18px) scale(0.985);
-      opacity: 0;
-      transition: transform 220ms ease, opacity 220ms ease;
       backdrop-filter: blur(14px);
       overflow: hidden;
-    }
-
-    .drawer.is-open {
-      transform: translate(-50%, 0) scale(1);
-      opacity: 1;
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(var(--drag-x), var(--drag-y));
     }
 
     .drawer-head {
@@ -1558,6 +2030,9 @@ export function buildProxyTraceDashboardHtml(
       justify-content: space-between;
       gap: 12px;
       background: rgba(245, 241, 235, 0.72);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
     }
 
     .drawer-title {
@@ -1587,11 +2062,487 @@ export function buildProxyTraceDashboardHtml(
 
     .drawer-body {
       flex: 1;
-      overflow: auto;
-      padding: 24px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-gutter: stable;
+      padding: 18px;
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 24px;
+      grid-template-columns: 1fr;
+      gap: 18px;
+      align-content: start;
+    }
+
+    .drawer-detail-stack {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .detail-rail-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 220px;
+      max-height: min(560px, calc(100vh - 40px));
+      padding: 14px 12px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: rgba(247, 243, 238, 0.98);
+      box-shadow: 0 18px 48px rgba(35, 29, 23, 0.14);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 130;
+      backdrop-filter: blur(12px);
+      overflow: visible;
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(var(--drag-x), var(--drag-y));
+    }
+
+    .detail-rail-label {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      text-align: center;
+      flex: 0 0 auto;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .detail-rail-list {
+      display: grid;
+      gap: 0;
+      position: relative;
+      justify-items: stretch;
+      align-content: start;
+      padding: 4px 0;
+      overflow-y: auto;
+      overflow-x: visible;
+      scrollbar-gutter: stable;
+    }
+
+    .rail-node {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      border: 1px solid rgba(23, 23, 23, 0.08);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 12px 13px;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(35, 29, 23, 0.05);
+      transition: background 140ms ease, color 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .rail-node:hover {
+      background: rgba(255, 255, 255, 0.96);
+      border-color: rgba(23, 23, 23, 0.14);
+      color: var(--ink);
+      transform: translateY(-1px);
+    }
+
+    .rail-node.is-active {
+      background: rgba(83, 42, 168, 0.06);
+      border-color: rgba(83, 42, 168, 0.18);
+      box-shadow: 0 14px 28px rgba(83, 42, 168, 0.08);
+      color: var(--ink);
+    }
+
+    .rail-node.is-error {
+      color: var(--error);
+    }
+
+    .rail-node.is-error.is-active {
+      background: rgba(157, 31, 31, 0.08);
+    }
+
+    .rail-node.is-in-flight {
+      color: var(--secondary);
+    }
+
+    .rail-node.is-in-flight.is-active {
+      background: rgba(115, 92, 0, 0.08);
+    }
+
+    .rail-node-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rail-node-seq {
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      flex: 0 0 auto;
+    }
+
+    .rail-node.is-error .rail-node-seq {
+      color: var(--error);
+    }
+
+    .rail-node.is-in-flight .rail-node-seq {
+      color: var(--secondary);
+    }
+
+    .rail-node-label {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.25;
+      white-space: normal;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      min-width: 0;
+    }
+
+    .rail-token-meter,
+    .token-meter-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--line-soft);
+      overflow: hidden;
+      display: flex;
+    }
+
+    .token-meter-segment {
+      height: 100%;
+      min-width: 2px;
+    }
+
+    .token-meter-segment.is-new {
+      background: linear-gradient(90deg, rgba(83, 42, 168, 0.88), rgba(83, 42, 168, 1));
+    }
+
+    .token-meter-segment.is-cached {
+      background: rgba(83, 42, 168, 0.18);
+    }
+
+    .rail-connector {
+      width: 1px;
+      height: 6px;
+      background: var(--line);
+      margin: 0 auto;
+      flex: 0 0 auto;
+    }
+
+    .drawer-summary-strip {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(245, 241, 235, 0.68);
+    }
+
+    .drawer-summary-main {
+      min-width: 0;
+      display: grid;
+      gap: 12px;
+      flex: 1 1 auto;
+    }
+
+    .summary-route {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+      letter-spacing: 0.02em;
+      word-break: break-word;
+    }
+
+    .summary-route:empty {
+      display: none;
+    }
+
+    .summary-chip-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .drawer-toolbar,
+    .section-actions,
+    .drawer-overlay-actions,
+    .prompt-item-panel-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .icon-button {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 23, 23, 0.12);
+      background: rgba(23, 23, 23, 0.06);
+      color: var(--ink);
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      transition: color 140ms ease, border-color 140ms ease, background 140ms ease, transform 140ms ease;
+    }
+
+    .icon-button:hover:not(:disabled) {
+      color: var(--ink);
+      border-color: rgba(23, 23, 23, 0.16);
+      background: rgba(255, 255, 255, 0.98);
+      transform: translateY(-1px);
+    }
+
+    .icon-button:disabled {
+      opacity: 0.36;
+      cursor: default;
+    }
+
+    .icon-button.is-active {
+      color: var(--ink);
+      background: rgba(23, 23, 23, 0.12);
+      border-color: rgba(23, 23, 23, 0.22);
+    }
+
+    .icon-button.is-confirmed {
+      color: var(--success);
+      border-color: rgba(22, 101, 52, 0.18);
+      background: rgba(22, 101, 52, 0.08);
+    }
+
+    .icon-button svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    #drawer-transport-button {
+      color: var(--secondary);
+      background: rgba(115, 92, 0, 0.1);
+      border-color: rgba(115, 92, 0, 0.18);
+    }
+
+    #prompt-raw-button {
+      color: var(--primary);
+      background: rgba(83, 42, 168, 0.1);
+      border-color: rgba(83, 42, 168, 0.18);
+    }
+
+    .summary-chip {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.74);
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      max-width: 100%;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    }
+
+    .has-tooltip {
+      position: relative;
+      cursor: default;
+      z-index: 0;
+    }
+
+    .has-tooltip:hover,
+    .has-tooltip:focus-visible {
+      z-index: 4000;
+    }
+
+    .has-tooltip::before,
+    .has-tooltip::after {
+      position: absolute;
+      left: 50%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 140ms ease, transform 140ms ease;
+      z-index: 4001;
+    }
+
+    .has-tooltip::before {
+      content: "";
+      bottom: calc(100% + 4px);
+      transform: translateX(-50%) translateY(4px);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 6px solid rgba(23, 23, 23, 0.92);
+    }
+
+    .has-tooltip::after {
+      content: attr(data-tooltip);
+      bottom: calc(100% + 10px);
+      transform: translateX(-50%) translateY(4px);
+      min-width: 96px;
+      max-width: 240px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(23, 23, 23, 0.92);
+      color: rgba(255, 255, 255, 0.94);
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: left;
+      white-space: normal;
+      box-shadow: 0 12px 28px rgba(23, 23, 23, 0.2);
+    }
+
+    .has-tooltip.is-left::before,
+    .has-tooltip.is-left::after {
+      left: auto;
+      right: calc(100% + 10px);
+    }
+
+    .has-tooltip.is-left::before {
+      top: 50%;
+      bottom: auto;
+      transform: translateX(4px) translateY(-50%);
+      border-top: 6px solid transparent;
+      border-bottom: 6px solid transparent;
+      border-left: 6px solid rgba(23, 23, 23, 0.92);
+      border-right: 0;
+    }
+
+    .has-tooltip.is-left::after {
+      top: 50%;
+      bottom: auto;
+      transform: translateX(4px) translateY(-50%);
+      max-width: 220px;
+      white-space: pre-line;
+    }
+
+    .has-tooltip:hover::before,
+    .has-tooltip:hover::after,
+    .has-tooltip:focus-visible::before,
+    .has-tooltip:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .has-tooltip.is-left:hover::before,
+    .has-tooltip.is-left:hover::after,
+    .has-tooltip.is-left:focus-visible::before,
+    .has-tooltip.is-left:focus-visible::after {
+      transform: translateX(0) translateY(-50%);
+    }
+
+    .drawer-summary-strip .has-tooltip::before {
+      top: calc(100% + 4px);
+      bottom: auto;
+      transform: translateX(-50%) translateY(-4px);
+      border-top: 0;
+      border-bottom: 6px solid rgba(23, 23, 23, 0.92);
+    }
+
+    .drawer-summary-strip .has-tooltip::after {
+      top: calc(100% + 10px);
+      bottom: auto;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    .drawer-summary-strip .has-tooltip:hover::before,
+    .drawer-summary-strip .has-tooltip:hover::after,
+    .drawer-summary-strip .has-tooltip:focus-visible::before,
+    .drawer-summary-strip .has-tooltip:focus-visible::after {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .summary-chip:hover,
+    .summary-chip-row .model-chip:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(35, 29, 23, 0.08);
+    }
+
+    .summary-chip.is-icon {
+      min-width: 40px;
+      padding: 8px 10px;
+    }
+
+    .summary-chip-symbol {
+      width: 16px;
+      height: 16px;
+      display: inline-grid;
+      place-items: center;
+    }
+
+    .summary-chip-symbol svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .summary-chip.is-success {
+      color: var(--success);
+      border-color: rgba(22, 101, 52, 0.16);
+      background: rgba(22, 101, 52, 0.08);
+    }
+
+    .summary-chip.is-warning {
+      color: var(--secondary);
+      border-color: rgba(115, 92, 0, 0.16);
+      background: rgba(115, 92, 0, 0.08);
+    }
+
+    .summary-chip.is-error {
+      color: var(--error);
+      border-color: rgba(157, 31, 31, 0.16);
+      background: rgba(157, 31, 31, 0.08);
+    }
+
+    .summary-token-chip {
+      min-width: 176px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+      display: grid;
+      gap: 7px;
+    }
+
+    .summary-token-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .summary-token-title,
+    .summary-token-note {
+      white-space: nowrap;
+    }
+
+    .summary-token-note {
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .summary-token-bar {
+      width: 100%;
     }
 
     .detail-section {
@@ -1601,22 +2552,30 @@ export function buildProxyTraceDashboardHtml(
       padding: 20px;
     }
 
+    .section-head {
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
     .detail-section-wide {
       grid-column: 1 / -1;
     }
 
     .detail-title {
-      margin: 0 0 16px;
+      margin: 0;
       font-family: var(--serif);
       font-size: 24px;
       line-height: 1;
       letter-spacing: -0.03em;
-      color: var(--primary);
+      color: var(--ink);
     }
 
     .meta-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 18px 16px;
     }
 
@@ -1637,7 +2596,7 @@ export function buildProxyTraceDashboardHtml(
     }
 
     .meta-value.emphasis {
-      color: var(--primary);
+      color: var(--ink);
       font-weight: 700;
     }
 
@@ -1685,7 +2644,6 @@ export function buildProxyTraceDashboardHtml(
 
     .accordion-group,
     .tool-item,
-    .nested-item,
     .raw-panel details {
       border: 1px solid var(--line-soft);
       border-radius: 18px;
@@ -1693,9 +2651,26 @@ export function buildProxyTraceDashboardHtml(
       overflow: hidden;
     }
 
+    .accordion-group.group-user {
+      border-color: rgba(255, 138, 30, 0.2);
+      background: rgba(255, 248, 242, 0.82);
+    }
+
+    .accordion-group.group-user > summary {
+      background: rgba(255, 248, 242, 0.78);
+    }
+
+    .accordion-group.group-user .accordion-title {
+      color: #9a4e00;
+    }
+
+    .accordion-group.group-user .accordion-badge {
+      background: rgba(255, 138, 30, 0.14);
+      color: #9a4e00;
+    }
+
     .accordion-group summary,
     .tool-item summary,
-    .nested-item summary,
     .raw-panel summary {
       list-style: none;
       cursor: pointer;
@@ -1703,7 +2678,6 @@ export function buildProxyTraceDashboardHtml(
 
     .accordion-group summary::-webkit-details-marker,
     .tool-item summary::-webkit-details-marker,
-    .nested-item summary::-webkit-details-marker,
     .raw-panel summary::-webkit-details-marker {
       display: none;
     }
@@ -1748,31 +2722,64 @@ export function buildProxyTraceDashboardHtml(
       gap: 6px;
       padding: 7px 11px;
       border-radius: 999px;
-      background: rgba(83, 42, 168, 0.08);
-      color: var(--primary);
+      background: rgba(23, 23, 23, 0.05);
+      color: var(--muted);
       font-size: 10px;
       font-weight: 700;
       letter-spacing: 0.05em;
       text-transform: uppercase;
     }
 
+    .accordion-summary-side {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .accordion-delta {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .accordion-delta.is-same {
+      background: rgba(23, 23, 23, 0.04);
+      color: var(--muted);
+    }
+
+    .accordion-delta.is-new {
+      background: rgba(22, 101, 52, 0.08);
+      color: var(--success);
+    }
+
+    .accordion-delta.is-changed {
+      background: rgba(115, 92, 0, 0.08);
+      color: var(--secondary);
+    }
+
     .accordion-group > summary::after,
     .tool-item > summary::after,
-    .nested-item > summary::after,
     .raw-panel summary::after {
       content: "+";
       position: absolute;
       right: 18px;
       top: 50%;
       transform: translateY(-50%);
-      color: var(--primary);
+      color: var(--ink);
       font-size: 18px;
       line-height: 1;
     }
 
     .accordion-group > summary,
     .tool-item > summary,
-    .nested-item > summary,
     .raw-panel summary {
       position: relative;
       padding-right: 48px;
@@ -1780,14 +2787,12 @@ export function buildProxyTraceDashboardHtml(
 
     .accordion-group[open] > summary::after,
     .tool-item[open] > summary::after,
-    .nested-item[open] > summary::after,
     .raw-panel details[open] summary::after {
       content: "−";
     }
 
     .accordion-body,
     .tool-body,
-    .nested-body,
     .raw-panel-body {
       border-top: 1px solid var(--line-soft);
       padding: 0 18px 18px;
@@ -1804,20 +2809,147 @@ export function buildProxyTraceDashboardHtml(
       gap: 10px;
     }
 
-    .nested-item {
+    .prompt-item-card {
+      width: 100%;
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
       background: rgba(247, 244, 239, 0.72);
-    }
-
-    .nested-item .accordion-summary {
       padding: 13px 14px;
+      text-align: left;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
     }
 
-    .nested-item .accordion-title {
+    .prompt-item-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 23, 23, 0.14);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 10px 24px rgba(35, 29, 23, 0.06);
+    }
+
+    .prompt-item-card.is-active {
+      border-color: rgba(83, 42, 168, 0.16);
+      background: rgba(83, 42, 168, 0.06);
+      box-shadow: 0 12px 28px rgba(83, 42, 168, 0.08);
+    }
+
+    .prompt-item-card-main {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .prompt-item-card .accordion-title {
       font-size: 13px;
     }
 
-    .nested-item .accordion-note {
+    .prompt-item-card .accordion-note {
       font-size: 10px;
+    }
+
+    .prompt-item-card-mark {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 23, 23, 0.08);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      display: inline-grid;
+      place-items: center;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .tool-card {
+      width: 100%;
+      border: 1px solid var(--line-soft);
+      border-radius: 22px;
+      background: rgba(247, 244, 239, 0.76);
+      padding: 16px 18px;
+      text-align: left;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    }
+
+    .tool-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(23, 23, 23, 0.14);
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 12px 28px rgba(35, 29, 23, 0.06);
+    }
+
+    .tool-card.is-active {
+      border-color: rgba(83, 42, 168, 0.16);
+      background: rgba(83, 42, 168, 0.05);
+      box-shadow: 0 14px 30px rgba(83, 42, 168, 0.08);
+    }
+
+    .tool-card-main {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+      flex: 1 1 auto;
+    }
+
+    .tool-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .tool-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+
+    .tool-card-note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .tool-card-side {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tool-card-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(23, 23, 23, 0.05);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .tool-card-mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 23, 23, 0.08);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--muted);
+      display: inline-grid;
+      place-items: center;
+      font-size: 16px;
+      line-height: 1;
     }
 
     .block-meta,
@@ -1908,6 +3040,82 @@ export function buildProxyTraceDashboardHtml(
       font-family: var(--mono);
     }
 
+    .prompt-item-panel {
+      position: absolute;
+      top: 118px;
+      left: calc(100% + 14px);
+      width: min(420px, 38vw);
+      max-height: calc(100% - 138px);
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(251, 249, 246, 0.98);
+      box-shadow: 0 22px 56px rgba(35, 29, 23, 0.16);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(calc(10px + var(--drag-x)), var(--drag-y)) scale(0.985);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 180ms ease, opacity 180ms ease;
+      z-index: 1;
+    }
+
+    .prompt-item-panel.is-open {
+      transform: translate(var(--drag-x), var(--drag-y)) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .prompt-item-panel-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(245, 241, 235, 0.74);
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .prompt-item-panel-copy {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .prompt-item-panel-group {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .prompt-item-panel-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+
+    .prompt-item-panel-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .prompt-item-panel-body {
+      max-height: calc(100% - 96px);
+      overflow: auto;
+      scrollbar-gutter: stable;
+      padding: 18px 20px 20px;
+      display: grid;
+      gap: 12px;
+    }
+
     .tool-meta {
       display: grid;
       gap: 8px;
@@ -1917,11 +3125,194 @@ export function buildProxyTraceDashboardHtml(
     .insight-empty {
       padding: 14px 16px;
       border-radius: 16px;
-      border: 1px dashed rgba(83, 42, 168, 0.18);
+      border: 1px dashed rgba(23, 23, 23, 0.14);
       background: rgba(255, 255, 255, 0.46);
       color: var(--muted);
       font-size: 12px;
       line-height: 1.8;
+    }
+
+    .drawer-overlay-backdrop {
+      position: absolute;
+      inset: 82px 0 0;
+      background: rgba(22, 18, 14, 0.12);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
+      z-index: 2;
+    }
+
+    .drawer-overlay-backdrop.is-open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-overlay {
+      position: absolute;
+      top: 94px;
+      right: 14px;
+      width: min(432px, calc(100% - 28px));
+      max-height: calc(100% - 118px);
+      display: flex;
+      flex-direction: column;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(251, 249, 246, 0.98);
+      box-shadow: 0 28px 72px rgba(35, 29, 23, 0.2);
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(var(--drag-x), calc(8px + var(--drag-y))) scale(0.985);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 180ms ease, opacity 180ms ease;
+      z-index: 3;
+      overflow: hidden;
+    }
+
+    .drawer-overlay.is-open {
+      transform: translate(var(--drag-x), var(--drag-y)) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .drawer-overlay-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line-soft);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(245, 241, 235, 0.74);
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .drawer-overlay-title {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+
+    .drawer-overlay-body {
+      padding: 18px 20px 20px;
+      overflow: auto;
+      scrollbar-gutter: stable;
+      display: grid;
+      gap: 12px;
+    }
+
+    .floating-window-host {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 90;
+      overflow: visible;
+    }
+
+    .floating-window {
+      position: absolute;
+      width: min(420px, calc(100vw - 44px));
+      max-height: min(560px, calc(100% - 116px));
+      display: flex;
+      flex-direction: column;
+      border-radius: 24px;
+      border: 1px solid var(--line);
+      background: rgba(251, 249, 246, 0.98);
+      box-shadow: 0 24px 64px rgba(35, 29, 23, 0.18);
+      backdrop-filter: blur(12px);
+      overflow: hidden;
+      pointer-events: auto;
+      --drag-x: 0px;
+      --drag-y: 0px;
+      transform: translate(var(--drag-x), var(--drag-y)) scale(0.985);
+      opacity: 0;
+      transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+    }
+
+    .floating-window.is-open {
+      transform: translate(var(--drag-x), var(--drag-y)) scale(1);
+      opacity: 1;
+    }
+
+    .floating-window.is-active {
+      box-shadow: 0 28px 80px rgba(35, 29, 23, 0.24);
+    }
+
+    .floating-window.is-wide {
+      width: min(432px, calc(100vw - 44px));
+    }
+
+    .floating-window-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(245, 241, 235, 0.74);
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .floating-window-copy {
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .floating-window-group {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .floating-window-title {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--ink);
+    }
+
+    .floating-window-title.is-mono {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .floating-window-meta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+
+    .floating-window-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+    }
+
+    .floating-window-body {
+      padding: 18px 20px 20px;
+      overflow: auto;
+      scrollbar-gutter: stable;
+      display: grid;
+      gap: 12px;
+    }
+
+    .overlay-note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
     }
 
     .footer {
@@ -1948,6 +3339,219 @@ export function buildProxyTraceDashboardHtml(
       min-width: 0;
     }
 
+    .footer-path-link {
+      color: inherit;
+      text-decoration: none;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .footer-path-link:hover {
+      color: var(--ink);
+      text-decoration: underline;
+    }
+
+    .settings-stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .settings-field {
+      display: grid;
+      gap: 8px;
+      padding: 14px 16px;
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
+      background: rgba(247, 244, 239, 0.72);
+    }
+
+    .settings-label {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .settings-select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      font-size: 13px;
+      padding: 12px 14px;
+    }
+
+    .settings-card {
+      padding: 16px;
+      border: 1px solid var(--line-soft);
+      border-radius: 18px;
+      background: rgba(247, 244, 239, 0.72);
+    }
+
+    .settings-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .settings-card-copy {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .settings-card-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .settings-card-title {
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .settings-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .settings-status-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid rgba(23, 23, 23, 0.08);
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .settings-status-pill.is-ready {
+      color: var(--success);
+      border-color: rgba(22, 101, 52, 0.14);
+      background: rgba(22, 101, 52, 0.08);
+    }
+
+    .settings-status-pill.is-pending {
+      color: var(--secondary);
+      border-color: rgba(115, 92, 0, 0.14);
+      background: rgba(115, 92, 0, 0.08);
+    }
+
+    .settings-info {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(23, 23, 23, 0.1);
+      background: rgba(255, 255, 255, 0.86);
+      color: var(--muted);
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .settings-switch {
+      position: relative;
+      width: 52px;
+      height: 32px;
+      flex: 0 0 auto;
+      display: inline-block;
+    }
+
+    .settings-switch input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .settings-switch-track {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(23, 23, 23, 0.12);
+      border: 1px solid rgba(23, 23, 23, 0.08);
+      transition: background 140ms ease, border-color 140ms ease;
+    }
+
+    .settings-switch-track::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 6px 14px rgba(23, 23, 23, 0.14);
+      transition: transform 140ms ease;
+    }
+
+    .settings-switch input:checked + .settings-switch-track {
+      background: rgba(83, 42, 168, 0.18);
+      border-color: rgba(83, 42, 168, 0.26);
+    }
+
+    .settings-switch input:checked + .settings-switch-track::after {
+      transform: translateX(20px);
+    }
+
+    .settings-switch input:focus-visible + .settings-switch-track {
+      box-shadow: 0 0 0 3px rgba(83, 42, 168, 0.12);
+    }
+
+    .settings-note {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .settings-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .settings-save {
+      border: 1px solid rgba(83, 42, 168, 0.18);
+      background: rgba(83, 42, 168, 0.1);
+      color: var(--primary);
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .settings-save:disabled {
+      opacity: 0.5;
+    }
+
+    .settings-feedback {
+      color: var(--muted);
+      font-size: 11px;
+      min-height: 1.4em;
+    }
+
     @media (max-width: 1100px) {
       .metric-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1960,6 +3564,10 @@ export function buildProxyTraceDashboardHtml(
       .hero {
         flex-direction: column;
         align-items: start;
+      }
+
+      .prompt-item-panel {
+        width: min(340px, calc(100vw - 150px));
       }
     }
 
@@ -2009,20 +3617,75 @@ export function buildProxyTraceDashboardHtml(
       }
 
       .drawer {
+        border-radius: 22px;
+      }
+
+      .detail-cluster {
         top: 10px;
         bottom: 10px;
         width: calc(100vw - 20px);
-        border-radius: 22px;
       }
 
       .drawer-body {
         grid-template-columns: 1fr;
-        padding: 18px;
+        padding: 96px 18px 18px;
       }
 
-      .detail-section-wide {
-        grid-column: auto;
+      .drawer-summary-strip {
+        flex-direction: column;
+        align-items: stretch;
       }
+
+      .detail-rail-panel {
+        top: 94px;
+        right: 14px;
+        left: 14px;
+        bottom: auto;
+        width: auto;
+        max-height: 220px;
+        padding: 12px 14px;
+        border-radius: 18px;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .detail-rail-list {
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 2px;
+      }
+
+      .rail-connector {
+        height: 4px;
+      }
+
+      .prompt-item-panel {
+        top: 112px;
+        right: 14px;
+        left: 14px;
+        width: auto;
+        max-height: calc(100% - 132px);
+      }
+
+      .detail-rail-list::before {
+        display: none;
+      }
+
+      .drawer-toolbar {
+        justify-content: flex-end;
+      }
+
+      .drawer-overlay {
+        top: 88px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-height: calc(100% - 108px);
+      }
+
+    .detail-section-wide {
+      grid-column: auto;
+    }
     }
   </style>
 </head>
@@ -2040,8 +3703,7 @@ export function buildProxyTraceDashboardHtml(
       </div>
 
       <div class="nav-group" style="margin-top:auto;">
-        <a class="nav-item" href="#"><span class="nav-mark"></span>${copy.navSettings}</a>
-        <a class="nav-item" href="#"><span class="nav-mark"></span>${copy.navHelp}</a>
+        <a id="nav-settings-button" class="nav-item" href="#"><span class="nav-mark"></span>${copy.navSettings}</a>
       </div>
     </aside>
 
@@ -2054,8 +3716,7 @@ export function buildProxyTraceDashboardHtml(
       </div>
       <div class="topbar-actions">
         <button id="refresh-button" class="action-chip">${copy.actionRefresh}</button>
-        <button class="action-chip" type="button">${copy.actionSettings}</button>
-        <button class="action-chip" type="button">${copy.actionAlerts}</button>
+        <button id="settings-button" class="action-chip" type="button">${copy.actionSettings}</button>
       </div>
     </header>
 
@@ -2076,7 +3737,10 @@ export function buildProxyTraceDashboardHtml(
           </div>
           <div class="session-cell">
             <span class="session-label">${copy.statusLabel}</span>
-            <span id="session-status-pill" class="status-pill"><span class="status-dot"></span><span id="session-status-text"></span></span>
+            <span class="session-status-wrap">
+              <span id="session-status-pill" class="status-pill"><span class="status-dot"></span><span id="session-status-text"></span></span>
+              <span id="session-inflight-indicator" class="live-indicator"></span>
+            </span>
           </div>
           <div class="session-cell">
             <span class="session-label">${copy.startLabel}</span>
@@ -2117,15 +3781,6 @@ export function buildProxyTraceDashboardHtml(
 
             <article class="metric-card">
               <div class="metric-label-row">
-                <span class="metric-label">${copy.inFlight}</span>
-                <span class="metric-mark secondary"></span>
-              </div>
-              <div id="card-inflight" class="metric-value">0</div>
-              <div id="card-inflight-sub" class="metric-sub">${copy.readyStatus}</div>
-            </article>
-
-            <article class="metric-card">
-              <div class="metric-label-row">
                 <span class="metric-label">${copy.successRate}</span>
                 <span class="metric-mark success"></span>
               </div>
@@ -2142,7 +3797,10 @@ export function buildProxyTraceDashboardHtml(
                 <span class="metric-mark neutral"></span>
               </div>
               <div id="card-latency" class="metric-value">--</div>
-              <div id="card-p95" class="metric-sub">${copy.inputTokensLabel}: --</div>
+              <div class="metric-breakdown">
+                <div id="card-input-tokens" class="metric-breakdown-row"></div>
+                <div id="card-output-tokens" class="metric-breakdown-row"></div>
+              </div>
             </article>
           </section>
 
@@ -2168,26 +3826,20 @@ export function buildProxyTraceDashboardHtml(
             </label>
           </section>
 
-          <section class="panel">
+          <section class="panel request-panel">
             <div class="request-table-wrap">
               <table class="request-table">
                 <colgroup>
-                  <col style="width:12%" />
-                  <col style="width:9%" />
+                  <col style="width:14%" />
+                  <col style="width:42%" />
                   <col style="width:16%" />
-                  <col style="width:24%" />
-                  <col style="width:10%" />
-                  <col style="width:10%" />
-                  <col style="width:9%" />
-                  <col style="width:10%" />
+                  <col style="width:14%" />
+                  <col style="width:14%" />
                 </colgroup>
                 <thead>
                   <tr>
                     <th>${copy.tableSeq}</th>
-                    <th>${copy.tableAgent}</th>
-                    <th>${copy.tablePath}</th>
-                    <th>${copy.tableModel}</th>
-                    <th>${copy.tableStream}</th>
+                    <th>${copy.tablePrompt}</th>
                     <th>${copy.tableStatus}</th>
                     <th>${copy.tableUsage}</th>
                     <th>${copy.tableDuration}</th>
@@ -2204,69 +3856,96 @@ export function buildProxyTraceDashboardHtml(
     <footer class="footer">
       <div class="footer-left">
         <span id="footer-refresh"></span>
-        <span id="footer-path"></span>
-      </div>
-      <div class="footer-right">
-        <a href="#">${copy.privacyWarning}</a>
-        <a href="#">${copy.systemLogs}</a>
+        <a id="footer-path" class="footer-path-link mono" href="#" target="_blank" rel="noreferrer">${copy.openTraceAction}</a>
       </div>
     </footer>
   </div>
 
   <div id="drawer-backdrop" class="drawer-backdrop" hidden></div>
-  <aside id="detail-drawer" class="drawer" hidden>
-    <div class="drawer-head">
-      <div id="drawer-request-title" class="drawer-title">${copy.drawerTitle}</div>
-      <button id="drawer-close" class="drawer-close" type="button" aria-label="Close">×</button>
-    </div>
-    <div class="drawer-body">
-      <section class="detail-section">
-        <h3 class="detail-title">${copy.metadata}</h3>
-        <div class="meta-grid">
-          <div><div class="meta-label">${copy.requestIdLabel}</div><div id="drawer-request-id" class="meta-value mono"></div></div>
-          <div><div class="meta-label">${copy.sequenceLabel}</div><div id="drawer-seq" class="meta-value mono"></div></div>
-          <div><div class="meta-label">${copy.terminalNodeLabel}</div><div id="drawer-terminal" class="meta-value mono"></div></div>
-          <div><div class="meta-label">${copy.activeAgentLabel}</div><div id="drawer-agent" class="meta-value emphasis"></div></div>
-          <div><div class="meta-label">${copy.totalDurationLabel}</div><div id="drawer-duration" class="meta-value mono"></div></div>
-          <div><div class="meta-label">${copy.timestampLabel}</div><div id="drawer-timestamp" class="meta-value mono"></div></div>
-        </div>
-      </section>
-
-      <section class="detail-section">
-        <h3 class="detail-title">${copy.transportLayer}</h3>
-        <div class="transport-list">
-          <div class="transport-row"><span class="transport-label">${copy.methodLabel}</span><span id="drawer-method" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.endpointPathLabel}</span><span id="drawer-path" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.statusCodeLabel}</span><span id="drawer-status" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.modelLabel}</span><span id="drawer-model" class="transport-value"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.usageLabel}</span><span id="drawer-usage" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.inputTokensLabel}</span><span id="drawer-input-tokens" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.outputTokensLabel}</span><span id="drawer-output-tokens" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.requestBytesLabel}</span><span id="drawer-request-bytes" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.responseBytesLabel}</span><span id="drawer-response-bytes" class="transport-value mono"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.eventTypeLabel}</span><span id="drawer-event-type" class="transport-value"></span></div>
-          <div class="transport-row"><span class="transport-label">${copy.noteLabel}</span><span id="drawer-note" class="transport-value mono"></span></div>
-        </div>
-      </section>
-
-      <section class="detail-section detail-section-wide">
-        <h3 class="detail-title">${copy.promptInsightTitle}</h3>
-        <div id="drawer-prompt-structure" class="insight-stack"></div>
-        <div id="drawer-raw-prompt" class="raw-panel"></div>
-      </section>
-
-      <section class="detail-section detail-section-wide">
-        <h3 class="detail-title">${copy.toolInsightTitle}</h3>
-        <div id="drawer-tool-activity" class="tool-stack"></div>
-      </section>
-    </div>
+  <aside id="detail-rail-panel" class="detail-rail-panel" aria-label="${copy.turnRailTitle}" hidden>
+    <div class="detail-rail-label">${copy.turnRailTitle}</div>
+    <div id="drawer-turn-rail" class="detail-rail-list"></div>
   </aside>
+  <div id="detail-cluster" class="detail-cluster" hidden>
+    <aside id="detail-drawer" class="drawer">
+      <div class="drawer-head">
+        <div id="drawer-request-title" class="drawer-title">${copy.drawerTitle}</div>
+        <button id="drawer-close" class="drawer-close" type="button" aria-label="Close">×</button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-summary-strip">
+          <div class="drawer-summary-main">
+            <div id="drawer-request-route" class="summary-route"></div>
+            <div class="summary-chip-row">
+              <span id="drawer-summary-model"></span>
+              <span id="drawer-summary-status"></span>
+              <span id="drawer-summary-duration"></span>
+              <span id="drawer-summary-tokens"></span>
+            </div>
+          </div>
+          <div class="drawer-toolbar">
+            <button id="drawer-metadata-button" class="icon-button" type="button" title="${copy.metadata}" aria-label="${copy.metadata}">${iconMetadata}</button>
+            <button id="drawer-transport-button" class="icon-button" type="button" title="${copy.transportLayer}" aria-label="${copy.transportLayer}">${iconTransport}</button>
+          </div>
+        </div>
+        <div class="drawer-detail-stack">
+          <section class="detail-section detail-section-wide">
+            <div class="section-head">
+              <h3 class="detail-title">${copy.promptInsightTitle}</h3>
+              <div class="section-actions">
+                <button id="prompt-raw-button" class="icon-button" type="button" title="${copy.rawPromptAction}" aria-label="${copy.rawPromptAction}">${iconPrompt}</button>
+              </div>
+            </div>
+            <div id="drawer-prompt-structure" class="insight-stack"></div>
+          </section>
+
+          <section class="detail-section detail-section-wide">
+            <div class="section-head">
+              <h3 class="detail-title">${copy.answerInsightTitle}</h3>
+            </div>
+            <div id="drawer-answer-structure" class="insight-stack"></div>
+          </section>
+        </div>
+      </div>
+      <div id="drawer-overlay-backdrop" class="drawer-overlay-backdrop" hidden></div>
+      <section id="drawer-overlay" class="drawer-overlay" hidden>
+        <div class="drawer-overlay-head">
+          <div id="drawer-overlay-title" class="drawer-overlay-title"></div>
+          <div class="drawer-overlay-actions">
+            <button id="drawer-overlay-copy" class="icon-button" type="button" title="${copy.copyAction}" aria-label="${copy.copyAction}" hidden>${iconCopy}</button>
+            <button id="drawer-overlay-close" class="icon-button" type="button" title="${copy.closeAction}" aria-label="${copy.closeAction}">${iconClose}</button>
+          </div>
+        </div>
+        <div id="drawer-overlay-body" class="drawer-overlay-body"></div>
+      </section>
+    </aside>
+    <aside id="prompt-item-panel" class="prompt-item-panel" hidden>
+      <div class="prompt-item-panel-head">
+        <div class="prompt-item-panel-copy">
+          <div id="prompt-item-panel-group" class="prompt-item-panel-group"></div>
+          <div id="prompt-item-panel-title" class="prompt-item-panel-title"></div>
+          <div id="prompt-item-panel-meta" class="prompt-item-panel-meta"></div>
+        </div>
+        <div class="prompt-item-panel-actions">
+          <button id="prompt-item-panel-copy" class="icon-button" type="button" title="${copy.copyAction}" aria-label="${copy.copyAction}" hidden>${iconCopy}</button>
+          <button id="prompt-item-panel-close" class="icon-button" type="button" title="${copy.closeAction}" aria-label="${copy.closeAction}">${iconClose}</button>
+        </div>
+      </div>
+      <div id="prompt-item-panel-body" class="prompt-item-panel-body"></div>
+    </aside>
+  </div>
+  <div id="floating-window-host" class="floating-window-host"></div>
 
   <script>
     const runId = ${serializedRunId};
     const text = ${serializedCopy};
     const tracePath = ${serializedTracePath};
+    const traceFileHref = ${serializedTraceFileHref};
     const endpoint = "/__melu/events";
+    const copyIconMarkup = ${serializedIconCopy};
+    const copiedIconMarkup = ${serializedIconCheck};
+    const pendingIconMarkup = ${serializedIconPending};
+    const closeIconMarkup = ${serializedIconClose};
 
     const elements = {
       mainScroll: document.querySelector(".main"),
@@ -2276,6 +3955,7 @@ export function buildProxyTraceDashboardHtml(
       sessionStart: document.getElementById("session-start"),
       sessionStatusPill: document.getElementById("session-status-pill"),
       sessionStatusText: document.getElementById("session-status-text"),
+      sessionInflightIndicator: document.getElementById("session-inflight-indicator"),
       trafficWarning: document.getElementById("traffic-warning"),
       emptyState: document.getElementById("empty-state"),
       emptyTitle: document.getElementById("empty-title"),
@@ -2286,43 +3966,51 @@ export function buildProxyTraceDashboardHtml(
       cardTotal: document.getElementById("card-total"),
       cardUp: document.getElementById("card-up"),
       cardDown: document.getElementById("card-down"),
-      cardInFlight: document.getElementById("card-inflight"),
-      cardInFlightSub: document.getElementById("card-inflight-sub"),
       cardSuccessRate: document.getElementById("card-success-rate"),
       cardSuccessCount: document.getElementById("card-success-count"),
       cardErrorCount: document.getElementById("card-error-count"),
       cardLatency: document.getElementById("card-latency"),
-      cardP95: document.getElementById("card-p95"),
+      cardInputTokens: document.getElementById("card-input-tokens"),
+      cardOutputTokens: document.getElementById("card-output-tokens"),
       timelineMeta: document.getElementById("timeline-meta"),
       timelineBars: document.getElementById("timeline-bars"),
       requestTableBody: document.getElementById("request-table-body"),
       footerRefresh: document.getElementById("footer-refresh"),
       footerPath: document.getElementById("footer-path"),
       drawerBackdrop: document.getElementById("drawer-backdrop"),
+      detailCluster: document.getElementById("detail-cluster"),
+      detailRailPanel: document.getElementById("detail-rail-panel"),
       detailDrawer: document.getElementById("detail-drawer"),
+      floatingWindowHost: document.getElementById("floating-window-host"),
       drawerClose: document.getElementById("drawer-close"),
       drawerRequestTitle: document.getElementById("drawer-request-title"),
-      drawerRequestId: document.getElementById("drawer-request-id"),
-      drawerSeq: document.getElementById("drawer-seq"),
-      drawerTerminal: document.getElementById("drawer-terminal"),
-      drawerAgent: document.getElementById("drawer-agent"),
-      drawerDuration: document.getElementById("drawer-duration"),
-      drawerTimestamp: document.getElementById("drawer-timestamp"),
-      drawerMethod: document.getElementById("drawer-method"),
-      drawerPath: document.getElementById("drawer-path"),
-      drawerStatus: document.getElementById("drawer-status"),
-      drawerModel: document.getElementById("drawer-model"),
-      drawerUsage: document.getElementById("drawer-usage"),
-      drawerInputTokens: document.getElementById("drawer-input-tokens"),
-      drawerOutputTokens: document.getElementById("drawer-output-tokens"),
-      drawerRequestBytes: document.getElementById("drawer-request-bytes"),
-      drawerResponseBytes: document.getElementById("drawer-response-bytes"),
-      drawerEventType: document.getElementById("drawer-event-type"),
-      drawerNote: document.getElementById("drawer-note"),
+      drawerRequestRoute: document.getElementById("drawer-request-route"),
+      drawerSummaryModel: document.getElementById("drawer-summary-model"),
+      drawerSummaryStatus: document.getElementById("drawer-summary-status"),
+      drawerSummaryDuration: document.getElementById("drawer-summary-duration"),
+      drawerSummaryTokens: document.getElementById("drawer-summary-tokens"),
+      drawerTurnRail: document.getElementById("drawer-turn-rail"),
+      drawerMetadataButton: document.getElementById("drawer-metadata-button"),
+      drawerTransportButton: document.getElementById("drawer-transport-button"),
+      promptRawButton: document.getElementById("prompt-raw-button"),
+      drawerOverlayBackdrop: document.getElementById("drawer-overlay-backdrop"),
+      drawerOverlay: document.getElementById("drawer-overlay"),
+      drawerOverlayTitle: document.getElementById("drawer-overlay-title"),
+      drawerOverlayBody: document.getElementById("drawer-overlay-body"),
+      drawerOverlayCopy: document.getElementById("drawer-overlay-copy"),
+      drawerOverlayClose: document.getElementById("drawer-overlay-close"),
       drawerPromptStructure: document.getElementById("drawer-prompt-structure"),
-      drawerRawPrompt: document.getElementById("drawer-raw-prompt"),
-      drawerToolActivity: document.getElementById("drawer-tool-activity"),
+      drawerAnswerStructure: document.getElementById("drawer-answer-structure"),
+      promptItemPanel: document.getElementById("prompt-item-panel"),
+      promptItemPanelGroup: document.getElementById("prompt-item-panel-group"),
+      promptItemPanelTitle: document.getElementById("prompt-item-panel-title"),
+      promptItemPanelMeta: document.getElementById("prompt-item-panel-meta"),
+      promptItemPanelBody: document.getElementById("prompt-item-panel-body"),
+      promptItemPanelCopy: document.getElementById("prompt-item-panel-copy"),
+      promptItemPanelClose: document.getElementById("prompt-item-panel-close"),
       refreshButton: document.getElementById("refresh-button"),
+      settingsButton: document.getElementById("settings-button"),
+      navSettingsButton: document.getElementById("nav-settings-button"),
       searchInput: document.getElementById("search-input"),
       filterButtons: Array.from(document.querySelectorAll(".filter-button")),
       navItems: Array.from(document.querySelectorAll(".nav-item[data-view]"))
@@ -2331,14 +4019,28 @@ export function buildProxyTraceDashboardHtml(
     let lastRenderSignature = "";
     let activeFilter = "all";
     let searchTerm = "";
+    let selectedTurnId = null;
     let selectedRequestId = null;
     let currentView = "overview";
     let isOffline = false;
     let lastSuccessfulRefreshAt = null;
+    let activeOverlayKind = null;
+    let overlayCopyText = "";
+    let overlayCopyResetTimer = null;
+    let activePromptPanelKind = null;
+    let activePromptItemId = null;
+    let promptPanelCopyText = "";
+    let promptPanelCopyResetTimer = null;
+    let promptItemRegistry = new Map();
+    let answerItemRegistry = new Map();
+    let settingsLoadPromise = null;
+    const floatingWindows = new Map();
+    let floatingWindowZ = 20;
     const snapshotStorageKey = "melu-trace-snapshot:" + runId;
     let latestState = {
       events: [],
       requests: [],
+      turns: [],
       stats: null,
       generatedAt: null
     };
@@ -2380,14 +4082,22 @@ export function buildProxyTraceDashboardHtml(
 
     function formatDuration(value) {
       if (typeof value !== "number" || Number.isNaN(value)) return "--";
-      const totalSeconds = Math.max(0, Math.round(value / 1000));
+      const safeValue = Math.max(0, value);
+      if (safeValue < 1000) return Math.round(safeValue) + "ms";
+      if (safeValue < 60_000) {
+        const seconds = safeValue / 1000;
+        const precision = seconds >= 10 ? 0 : 1;
+        return seconds.toFixed(precision).replace(/\\.0$/, "") + "s";
+      }
+
+      const totalSeconds = Math.round(safeValue / 1000);
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
       if (hours > 0) {
-        return String(hours).padStart(2, "0") + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+        return hours + "h " + String(minutes).padStart(2, "0") + "m";
       }
-      return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+      return minutes + "m " + String(seconds).padStart(2, "0") + "s";
     }
 
     function compactRunId(value) {
@@ -2425,24 +4135,265 @@ export function buildProxyTraceDashboardHtml(
       return truncatePreview(model || "--", 18);
     }
 
-    function renderModelChip(model) {
+    function renderModelChip(model, tooltip) {
       const rawLabel = model || "--";
       const tone = modelTone(rawLabel);
       const displayLabel = modelDisplayLabel(rawLabel);
-      return '<span class="model-chip ' + tone + '" title="' + escapeHtml(rawLabel) + '">' + escapeHtml(displayLabel) + '</span>';
+      return '<span class="model-chip ' + tone + (tooltip ? ' has-tooltip' : '') + '"'
+        + (tooltip ? ' data-tooltip="' + escapeHtml(tooltip) + '"' : '')
+        + '>'
+        + escapeHtml(displayLabel)
+        + '</span>';
     }
 
     function totalUsage(request) {
-      const input = typeof request.inputTokens === "number" ? request.inputTokens : 0;
+      const cache = cacheUsageInfo(request);
       const output = typeof request.outputTokens === "number" ? request.outputTokens : 0;
-      if (!input && !output) return null;
-      return input + output;
+      const total = cache.totalPromptTokens + output;
+      return total > 0 ? total : null;
+    }
+
+    function cacheUsageInfo(request) {
+      const inputTokens = typeof request.inputTokens === "number" ? request.inputTokens : 0;
+      const cacheCreationTokens = typeof request.cacheCreationTokens === "number" ? request.cacheCreationTokens : 0;
+      const cachedTokens = typeof request.cacheReadTokens === "number" ? request.cacheReadTokens : 0;
+      const newTokens = inputTokens + cacheCreationTokens;
+      const totalPromptTokens = newTokens + cachedTokens;
+      const hitPct = totalPromptTokens > 0 ? Math.round((cachedTokens / totalPromptTokens) * 100) : 0;
+      return {
+        inputTokens: inputTokens,
+        cacheCreationTokens: cacheCreationTokens,
+        cachedTokens: cachedTokens,
+        newTokens: newTokens,
+        totalPromptTokens: totalPromptTokens,
+        hitPct: hitPct
+      };
+    }
+
+    function aggregateRequestUsage(requests) {
+      const totals = {
+        newTokens: 0,
+        cachedTokens: 0,
+        promptTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        hitPct: 0
+      };
+
+      (Array.isArray(requests) ? requests : []).forEach(function (request) {
+        const cache = cacheUsageInfo(request);
+        totals.newTokens += cache.newTokens;
+        totals.cachedTokens += cache.cachedTokens;
+        totals.promptTokens += cache.totalPromptTokens;
+        totals.outputTokens += typeof request.outputTokens === "number" ? request.outputTokens : 0;
+      });
+
+      totals.totalTokens = totals.promptTokens + totals.outputTokens;
+      totals.hitPct = totals.promptTokens > 0
+        ? Math.round((totals.cachedTokens / totals.promptTokens) * 100)
+        : 0;
+      return totals;
+    }
+
+    function tokenBreakdownParts(request) {
+      const cache = cacheUsageInfo(request);
+      const parts = [];
+      if (cache.inputTokens > 0) {
+        parts.push(text.inputTokensLabel + " " + formatTokenCount(cache.inputTokens));
+      }
+      if (cache.cacheCreationTokens > 0) {
+        parts.push(text.cacheCreationLabel + " " + formatTokenCount(cache.cacheCreationTokens));
+      }
+      if (cache.cachedTokens > 0 || cache.totalPromptTokens > 0) {
+        parts.push(text.cacheReadLabel + " " + formatTokenCount(cache.cachedTokens));
+      }
+      if (typeof request.outputTokens === "number") {
+        parts.push(text.outputTokensLabel + " " + formatTokenCount(request.outputTokens));
+      }
+      return parts;
+    }
+
+    function tokenMeterPercents(cache) {
+      if (!cache.totalPromptTokens) {
+        return { newPct: 0, cachedPct: 0 };
+      }
+
+      let newPct = Math.round((cache.newTokens / cache.totalPromptTokens) * 100);
+      let cachedPct = 100 - newPct;
+
+      if (cache.newTokens > 0 && newPct === 0) {
+        newPct = 1;
+        cachedPct = 99;
+      }
+      if (cache.cachedTokens > 0 && cachedPct === 0) {
+        cachedPct = 1;
+        newPct = 99;
+      }
+
+      return { newPct: newPct, cachedPct: cachedPct };
+    }
+
+    function renderTokenMeterBar(cache, className) {
+      if (!cache || !cache.totalPromptTokens) return "";
+      const widths = tokenMeterPercents(cache);
+      return '<div class="' + escapeHtml(className || "token-meter-bar") + ' token-meter-bar">'
+        + (cache.newTokens > 0 ? '<span class="token-meter-segment is-new" style="width:' + widths.newPct + '%"></span>' : '')
+        + (cache.cachedTokens > 0 ? '<span class="token-meter-segment is-cached" style="width:' + widths.cachedPct + '%"></span>' : '')
+        + '</div>';
+    }
+
+    function renderSummaryTokenMeter(request) {
+      const cache = cacheUsageInfo(request);
+      const tooltip = tokenBreakdownParts(request).join(" · ");
+
+      if (!cache.totalPromptTokens) {
+        return renderSummaryChip(
+          escapeHtml(typeof request.outputTokens === "number" ? formatTokenCount(request.outputTokens) + " " + text.outputTokensLabel : "--"),
+          "",
+          false,
+          tooltip || text.usageLabel + " --"
+        );
+      }
+
+      return '<span class="summary-token-chip has-tooltip" data-tooltip="' + escapeHtml(tooltip || "--") + '">'
+        + '<span class="summary-token-head">'
+        + '<span class="summary-token-title">' + escapeHtml("+" + formatTokenCount(cache.newTokens) + " " + text.newTokensLabel) + '</span>'
+        + '<span class="summary-token-note">' + escapeHtml(cache.hitPct + "% " + text.cacheHitLabel) + '</span>'
+        + '</span>'
+        + renderTokenMeterBar(cache, "summary-token-bar")
+        + '</span>';
+    }
+
+    function formatTokenSummary(request) {
+      const cache = cacheUsageInfo(request);
+      const output = typeof request.outputTokens === "number" ? request.outputTokens : 0;
+      const total = totalUsage(request);
+      if (total === null) return "--";
+
+      const details = [];
+      if (cache.newTokens > 0) {
+        details.push(text.newTokensLabel + " " + formatTokenCount(cache.newTokens));
+      }
+      if (cache.cachedTokens > 0 || cache.totalPromptTokens > 0) {
+        details.push(text.cachedTokensLabel + " " + formatTokenCount(cache.cachedTokens));
+      }
+      if (output > 0) {
+        details.push(text.outputShortLabel + " " + formatTokenCount(output));
+      }
+
+      return formatTokenCount(total) + (details.length ? " · " + details.join(" / ") : "");
+    }
+
+    function formatByteSummary(request) {
+      const details = [];
+      if (typeof request.requestBytes === "number") {
+        details.push(text.requestShortLabel + " " + formatBytes(request.requestBytes));
+      }
+      if (typeof request.responseBytes === "number") {
+        details.push(text.responseShortLabel + " " + formatBytes(request.responseBytes));
+      }
+      return details.length ? details.join(" · ") : "--";
     }
 
     function truncatePreview(value, limit) {
       const textValue = String(value || "");
       if (textValue.length <= limit) return textValue;
       return textValue.slice(0, limit) + "…";
+    }
+
+    function isCommandTranscriptText(value) {
+      const normalized = String(value || "").trim();
+      return normalized.startsWith("Command: ") && normalized.includes("\\nOutput:");
+    }
+
+    function isPolicySpecText(value) {
+      const normalized = String(value || "").trim();
+      return normalized.startsWith("<policy_spec>")
+        && normalized.includes("The user has allowed certain command prefixes")
+        && normalized.includes("ONLY return the prefix.");
+    }
+
+    function extractPromptRealUsers(snapshot) {
+      if (!snapshot || !Array.isArray(snapshot.messages)) return [];
+      return snapshot.messages
+        .filter(function (message) {
+          return message && message.role === "user" && !message.toolResultOnly;
+        })
+        .map(function (message) {
+          return {
+            index: typeof message.index === "number" ? message.index : -1,
+            text: String(typeof message.cleanedText === "string" ? message.cleanedText : message.text || "").trim()
+          };
+        })
+        .filter(function (message) { return message.text.length > 0; });
+    }
+
+    function readPromptMaxTokens(snapshot) {
+      if (!snapshot || typeof snapshot.rawRequestBody !== "string") return null;
+      const match = snapshot.rawRequestBody.match(/"max_tokens"\\s*:\\s*(\\d+)/);
+      if (!match) return null;
+      const parsed = Number(match[1]);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function inferRequestKindFromSnapshot(request) {
+      const previewText = String(request.turnPreview || "").trim();
+      const snapshot = request.promptSnapshot;
+      const users = extractPromptRealUsers(snapshot);
+      const latestUser = users[users.length - 1] || null;
+      const latestText = latestUser ? latestUser.text : previewText;
+      const maxTokens = readPromptMaxTokens(snapshot);
+      if (maxTokens === 1 && latestText.toLowerCase() === "quota") {
+        return "probe";
+      }
+      if (isPolicySpecText(latestText) || isPolicySpecText(previewText)) {
+        return "continuation";
+      }
+      if (typeof request.requestKind === "string" && request.requestKind) {
+        return request.requestKind;
+      }
+      if (latestText.startsWith("[SUGGESTION MODE:")) {
+        return "suggestion_mode";
+      }
+      if (isCommandTranscriptText(latestText)) {
+        return "continuation";
+      }
+      const systemText = snapshot && Array.isArray(snapshot.systemBlocks)
+        ? snapshot.systemBlocks.map(function (block) { return String(block.text || ""); }).join("\\n")
+        : "";
+      if (systemText.includes("Analyze if this message indicates a new conversation topic.")) {
+        return "topic_analysis";
+      }
+      const hasLaterMessages = snapshot
+        && Array.isArray(snapshot.messages)
+        && latestUser
+        && latestUser.index >= 0
+        && latestUser.index < snapshot.messages.length - 1;
+      if (hasLaterMessages) {
+        return "continuation";
+      }
+      return "user_turn";
+    }
+
+    function deriveTurnAnchorFromSnapshot(request) {
+      const snapshot = request.promptSnapshot;
+      const users = extractPromptRealUsers(snapshot);
+      const latestUser = users[users.length - 1] || null;
+      const previousUser = users.length > 1 ? users[users.length - 2] : null;
+      const latestText = latestUser ? latestUser.text : "";
+      const previousText = previousUser ? previousUser.text : "";
+      const previewText = String(request.turnPreview || "").trim();
+      if (request.requestKind === "probe") return "";
+      if (isPolicySpecText(latestText) || isPolicySpecText(previewText)) {
+        return previousText;
+      }
+      if (isCommandTranscriptText(latestText)) {
+        return previousText || (isPolicySpecText(previewText) ? "" : previewText);
+      }
+      if (request.requestKind === "suggestion_mode") {
+        return previousText || (isPolicySpecText(previewText) ? "" : previewText);
+      }
+      return latestText || previewText;
     }
 
     function safeJson(value) {
@@ -2547,14 +4498,19 @@ export function buildProxyTraceDashboardHtml(
       return meta.join(" · ");
     }
 
-    function promptMessageMeta(message) {
+    function promptMessageMeta(message, contentOverride) {
       const meta = [];
       if (message && message.role) meta.push(String(message.role));
       if (Array.isArray(message && message.contentTypes) && message.contentTypes.length) {
         meta.push(message.contentTypes.join(", "));
       }
-      if (message && typeof message.text === "string") {
-        meta.push(formatCharCount(message.text.length));
+      const textValue = typeof contentOverride === "string"
+        ? contentOverride
+        : message && typeof message.text === "string"
+          ? message.text
+          : "";
+      if (textValue) {
+        meta.push(formatCharCount(textValue.length));
       }
       return meta.join(" · ");
     }
@@ -2567,7 +4523,6 @@ export function buildProxyTraceDashboardHtml(
       const memoryItems = [];
       const userItems = [];
       const extraItems = [];
-      const extraKinds = new Set();
       let systemIndex = 0;
       let userIndex = 0;
       let toolResultIndex = 0;
@@ -2599,18 +4554,20 @@ export function buildProxyTraceDashboardHtml(
         if (!rawText.trim()) return;
 
         if (message.role === "user" && !message.toolResultOnly) {
-          userIndex += 1;
-          userItems.push({
-            title: text.promptItemUserInput + " " + userIndex,
-            meta: promptMessageMeta(message),
-            content: rawText
-          });
-          return;
+          const cleanedUserText = String(message && typeof message.cleanedText === "string" ? message.cleanedText : rawText).trim();
+          if (cleanedUserText) {
+            userIndex += 1;
+            userItems.push({
+              title: text.promptItemUserInput + " " + userIndex,
+              meta: promptMessageMeta(message, cleanedUserText),
+              content: cleanedUserText
+            });
+            return;
+          }
         }
 
         if (message.toolResultOnly) {
           toolResultIndex += 1;
-          extraKinds.add("tool-result");
           extraItems.push({
             title: text.promptItemToolResult + " " + toolResultIndex,
             meta: promptMessageMeta(message),
@@ -2623,7 +4580,6 @@ export function buildProxyTraceDashboardHtml(
         if (tags.length) {
           tagIndex += 1;
           const tagInfo = inferPromptTagTitle(tags, tagIndex);
-          extraKinds.add(tagInfo.key);
           extraItems.push({
             title: tagInfo.title,
             meta: promptMessageMeta(message),
@@ -2633,7 +4589,6 @@ export function buildProxyTraceDashboardHtml(
         }
 
         assistantIndex += 1;
-        extraKinds.add(message.role || "assistant");
         extraItems.push({
           title: text.promptItemAssistantContext + " " + assistantIndex,
           meta: promptMessageMeta(message),
@@ -2643,32 +4598,46 @@ export function buildProxyTraceDashboardHtml(
 
       if (systemItems.length) {
         groups.push({
+          kind: "system",
           title: text.promptGroupSystem,
           summary: formatCountSummary(systemItems.length, text.countBlocks),
+          compareCount: systemItems.length,
           items: systemItems
-        });
-      }
-      if (memoryItems.length) {
-        groups.push({
-          title: text.promptGroupMemory,
-          summary: formatCountSummary(memoryEntries || memoryItems.length, memoryEntries ? text.countEntries : text.countBlocks),
-          items: memoryItems
         });
       }
       if (userItems.length) {
         groups.push({
+          kind: "user",
           title: text.promptGroupUser,
           summary: formatCountSummary(userItems.length, text.countMessages),
+          compareCount: userItems.length,
           items: userItems
+        });
+      }
+      if (memoryItems.length) {
+        const memoryCount = memoryEntries || memoryItems.length;
+        groups.push({
+          kind: "memory",
+          title: text.promptGroupMemory,
+          summary: formatCountSummary(memoryCount, text.countEntries),
+          compareCount: memoryCount,
+          items: memoryItems
         });
       }
       if (extraItems.length) {
         groups.push({
+          kind: "runtime",
           title: text.promptGroupTags,
-          summary: formatCountSummary(extraKinds.size || extraItems.length, text.countKinds),
+          summary: formatCountSummary(extraItems.length, text.countMessages),
+          compareCount: extraItems.length,
           items: extraItems
         });
       }
+
+      groups.sort(function (a, b) {
+        const order = { user: 0, system: 1, memory: 2, runtime: 3 };
+        return (order[a.kind] ?? 99) - (order[b.kind] ?? 99);
+      });
 
       return groups;
     }
@@ -2682,23 +4651,143 @@ export function buildProxyTraceDashboardHtml(
       return "";
     }
 
+    function toolInputObject(tool) {
+      return tool && tool.input && typeof tool.input === "object" ? tool.input : {};
+    }
+
+    function detectPathKind(value) {
+      const raw = String(value || "").toLowerCase();
+      if (!raw) return "file";
+      const fileName = raw.split("/").pop() || raw;
+      if (
+        fileName === "package.json"
+        || fileName === "package-lock.json"
+        || fileName === "pnpm-lock.yaml"
+        || fileName === "yarn.lock"
+        || fileName === "bun.lockb"
+        || fileName === "tsconfig.json"
+        || fileName === "jsconfig.json"
+        || fileName === ".env"
+        || fileName === ".env.local"
+        || fileName === ".gitignore"
+        || fileName === "dockerfile"
+        || fileName === "docker-compose.yml"
+        || fileName.endsWith(".config.js")
+        || fileName.endsWith(".config.cjs")
+        || fileName.endsWith(".config.mjs")
+        || fileName.endsWith(".config.ts")
+        || raw.includes("/.github/")
+      ) {
+        return "config";
+      }
+      if (fileName.endsWith(".ipynb")) return "notebook";
+      if (
+        fileName.endsWith(".md")
+        || fileName.endsWith(".mdx")
+        || fileName === "readme"
+        || fileName === "readme.md"
+        || fileName === "changelog.md"
+        || fileName === "license"
+        || fileName === "license.md"
+        || raw.includes("/docs/")
+      ) {
+        return "docs";
+      }
+      return "file";
+    }
+
+    function detectPatternKind(value) {
+      const raw = String(value || "").toLowerCase();
+      if (!raw) return "generic";
+      if (/\.(ts|tsx|js|jsx|py|rs|go|java|kt|swift|c|cpp|h|hpp)\b/.test(raw)) {
+        return "source";
+      }
+      if (/\.(md|mdx|rst|txt)\b/.test(raw) || raw.includes("readme") || raw.includes("docs")) {
+        return "docs";
+      }
+      return "generic";
+    }
+
+    function detectBashAction(command) {
+      const raw = String(command || "").trim();
+      const lower = raw.toLowerCase();
+      if (!lower) return text.toolActionRunCommand;
+      if (/(^|\s)git(\s|$)/.test(lower)) return text.toolActionGit;
+      if (/(^|\s)(pytest|vitest|jest|mocha|ava|cargo test|go test|npm test|pnpm test|yarn test|bun test)(\s|$)/.test(lower)
+        || /\b(npm|pnpm|yarn|bun)\s+run\s+test\b/.test(lower)) {
+        return text.toolActionRunTests;
+      }
+      if (/\b(vite build|next build|tsc\b|cargo build|go build)\b/.test(lower)
+        || /\b(npm|pnpm|yarn|bun)\s+(run\s+)?build\b/.test(lower)) {
+        return text.toolActionBuildProject;
+      }
+      if (/\b(npm|pnpm|yarn|bun)\s+(install|add)\b/.test(lower)
+        || /\b(pip|pip3|uv)\s+install\b/.test(lower)
+        || /\bcargo add\b/.test(lower)
+        || /\bgo get\b/.test(lower)) {
+        return text.toolActionInstallDeps;
+      }
+      if (/\b(npm|pnpm|yarn|bun)\s+(run\s+)?dev\b/.test(lower)
+        || /\b(npm|pnpm|yarn|bun)\s+start\b/.test(lower)
+        || /\b(vite|next|uvicorn|python -m http\.server|serve)\b/.test(lower)) {
+        return text.toolActionStartService;
+      }
+      if (/\b(ps|top|lsof|ss|netstat|status)\b/.test(lower)) {
+        return text.toolActionCheckStatus;
+      }
+      if (/\b(find|fd|rg --files|rg\b|grep\b|glob\b)\b/.test(lower)) {
+        return /\bwc -l\b/.test(lower) ? text.toolActionCountFiles : text.toolActionScanFiles;
+      }
+      return text.toolActionRunCommand;
+    }
+
     function toolActionTitle(tool) {
       const name = String(tool && tool.name ? tool.name : "");
-      if (name === "Read" || name === "NotebookRead") return text.toolActionRead;
-      if (name === "Write") return text.toolActionWrite;
-      if (name === "Edit" || name === "MultiEdit" || name === "NotebookEdit") return text.toolActionEdit;
+      const input = toolInputObject(tool);
+      const pathKind = detectPathKind(input.file_path || input.path || input.notebook_path || "");
+      if (name === "Read") {
+        if (pathKind === "config") return text.toolActionReadConfig;
+        if (pathKind === "docs") return text.toolActionReadDocs;
+        return text.toolActionRead;
+      }
+      if (name === "NotebookRead") return text.toolActionReadNotebook;
+      if (name === "Write") {
+        if (pathKind === "config") return text.toolActionWriteConfig;
+        if (pathKind === "docs") return text.toolActionWriteDocs;
+        return text.toolActionWrite;
+      }
+      if (name === "Edit") {
+        if (pathKind === "config") return text.toolActionEditConfig;
+        if (pathKind === "docs") return text.toolActionEditDocs;
+        return text.toolActionEdit;
+      }
+      if (name === "MultiEdit") return text.toolActionBatchEdit;
+      if (name === "NotebookEdit") return text.toolActionEditNotebook;
       if (name === "LS") return text.toolActionBrowse;
-      if (name === "Glob") return text.toolActionSearchFiles;
-      if (name === "Grep") return text.toolActionSearchContent;
-      if (name === "Bash") return text.toolActionRunCommand;
+      if (name === "Glob") {
+        const patternKind = detectPatternKind(input.pattern || input.path || "");
+        if (patternKind === "docs") return text.toolActionSearchDocs;
+        if (patternKind === "source") return text.toolActionSearchSource;
+        return text.toolActionSearchFiles;
+      }
+      if (name === "Grep") {
+        const patternKind = detectPatternKind(input.glob || input.path || input.pattern || "");
+        if (patternKind === "source") return text.toolActionSearchSource;
+        return text.toolActionSearchContent;
+      }
+      if (name === "Bash") return detectBashAction(input.command || "");
       if (name === "WebSearch") return text.toolActionWebSearch;
       if (name === "WebFetch") return text.toolActionWebFetch;
-      if (name === "Agent") return text.toolActionAgent;
+      if (name === "Agent" || name === "Task") return text.toolActionAgent;
       if (name === "TodoWrite") return text.toolActionTodo;
       if (name === "AskUserQuestion") return text.toolActionAskUser;
       if (name === "Skill") return text.toolActionSkill;
       if (name === "ExitPlanMode") return text.toolActionPlanExit;
-      if (/^mcp__/i.test(name)) return text.toolActionMcp;
+      if (/^mcp__/i.test(name)) {
+        if (/^mcp__figma__/i.test(name)) return "Figma";
+        if (/^mcp__playwright__/i.test(name)) return "Browser";
+        return text.toolActionMcp;
+      }
       return text.toolActionGeneric;
     }
 
@@ -2725,7 +4814,7 @@ export function buildProxyTraceDashboardHtml(
           return truncatePreview(String(input.url || "--"), 90);
         }
       }
-      if (name === "Agent") {
+      if (name === "Agent" || name === "Task") {
         const agentType = input.subagent_type ? String(input.subagent_type) : "--";
         const task = nativeDescription || input.description || input.prompt || "";
         return task ? agentType + " · " + truncatePreview(String(task), 64) : agentType;
@@ -2744,6 +4833,16 @@ export function buildProxyTraceDashboardHtml(
       if (name === "ExitPlanMode") return "--";
       if (/^mcp__/i.test(name)) return name.split("__").slice(1).join(" / ") || name;
       return truncatePreview(name || "--", 90);
+    }
+
+    function toolBadgeLabel(tool) {
+      const name = String(tool && tool.name ? tool.name : "Tool");
+      if (/^mcp__/i.test(name)) return "MCP";
+      return truncatePreview(name.toUpperCase(), 12);
+    }
+
+    function toolPanelKey(requestId, index) {
+      return "tool:" + requestId + ":" + index;
     }
 
     function toolKeyFields(tool) {
@@ -2777,7 +4876,7 @@ export function buildProxyTraceDashboardHtml(
         fields.push([text.toolLabelPattern, input.query || "--"]);
       } else if (name === "WebFetch") {
         fields.push([text.toolLabelUrl, input.url || "--"]);
-      } else if (name === "Agent") {
+      } else if (name === "Agent" || name === "Task") {
         if (input.subagent_type) fields.push([text.toolLabelType, input.subagent_type]);
         if (input.description || input.prompt) fields.push([text.toolLabelTask, input.description || input.prompt]);
       } else if (name === "TodoWrite") {
@@ -2836,6 +4935,1079 @@ export function buildProxyTraceDashboardHtml(
       return { label: text.errorLabel, main: text.errorMain };
     }
 
+    function renderSummaryChip(value, tone, mono, tooltip) {
+      return '<span class="summary-chip'
+        + (tone ? ' is-' + tone : '')
+        + (mono ? ' mono' : '')
+        + (tooltip ? ' has-tooltip' : '')
+        + '"'
+        + (tooltip ? ' data-tooltip="' + escapeHtml(tooltip) + '"' : '')
+        + '>' + value + '</span>';
+    }
+
+    function renderStatusSummaryChip(request) {
+      const statusText = typeof request.status === "number"
+        ? String(request.status)
+        : request.state === "in_flight"
+          ? text.inFlightBadge
+          : request.state === "error"
+            ? text.errorBadge
+            : text.successBadge;
+      const tone = request.state === "error"
+        ? "error"
+        : request.state === "in_flight"
+          ? "warning"
+          : "success";
+      const iconMarkup = request.state === "error"
+        ? closeIconMarkup
+        : request.state === "in_flight"
+          ? pendingIconMarkup
+          : copiedIconMarkup;
+      return '<span class="summary-chip is-icon is-' + tone + ' has-tooltip" data-tooltip="' + escapeHtml(text.statusCodeLabel + " " + statusText) + '"><span class="summary-chip-symbol" aria-hidden="true">' + iconMarkup + "</span></span>";
+    }
+
+    function applyDrawerSummary(request) {
+      const tokenBreakdown = tokenBreakdownParts(request);
+      elements.drawerRequestRoute.textContent = "";
+      elements.drawerRequestRoute.title = "";
+      elements.drawerSummaryModel.innerHTML = renderModelChip(request.model || "--", text.modelLabel + " " + (request.model || "--"));
+      elements.drawerSummaryStatus.innerHTML = renderStatusSummaryChip(request);
+      elements.drawerSummaryDuration.innerHTML = renderSummaryChip(
+        escapeHtml(formatDuration(request.durationMs)),
+        "",
+        true,
+        text.totalDurationLabel + " " + formatDuration(request.durationMs)
+      );
+      elements.drawerSummaryTokens.innerHTML = renderSummaryTokenMeter(request);
+      elements.drawerSummaryTokens.title = tokenBreakdown.join(" · ");
+    }
+
+    function renderDetailRows(rows) {
+      return rows.map(function (row) {
+        return '<div class="detail-row">'
+          + '<div class="detail-row-label">' + escapeHtml(row.label) + '</div>'
+          + '<div class="detail-row-value' + (row.mono ? ' mono' : '') + '">' + escapeHtml(row.value) + '</div>'
+          + '</div>';
+      }).join("");
+    }
+
+    function summarizeTurns(requests) {
+      const orderedRequests = requests.slice().sort(function (a, b) { return a.seq - b.seq; });
+      const turns = [];
+      const turnsById = new Map();
+      let currentTurn = null;
+      let visibleTurnSeq = 0;
+
+      function attachRequest(turn, request) {
+        turn.requests.push(request);
+        if (new Date(request.startedAt).getTime() < new Date(turn.startedAt).getTime()) {
+          turn.startedAt = request.startedAt;
+        }
+        const requestEndedAt = request.lastAt || request.startedAt;
+        if (new Date(requestEndedAt).getTime() > new Date(turn.endedAt).getTime()) {
+          turn.endedAt = requestEndedAt;
+        }
+        if (request.seq > turn.latestSeq) {
+          turn.latestSeq = request.seq;
+        }
+      }
+
+      function ensureExplicitTurn(request) {
+        const explicitTurnId = typeof request.turnId === "string" && request.turnId.trim() ? request.turnId.trim() : "";
+        if (!explicitTurnId) return null;
+
+        let turn = turnsById.get(explicitTurnId) || null;
+        const explicitTurnSeq = typeof request.turnSeq === "number" ? request.turnSeq : null;
+        const preview = String(request.turnPreview || request.turnAnchor || "").trim() || text.turnFallbackPreview;
+
+        if (!turn) {
+          if (explicitTurnSeq !== null) {
+            visibleTurnSeq = Math.max(visibleTurnSeq, explicitTurnSeq);
+          }
+          turn = {
+            turnId: explicitTurnId,
+            turnSeq: explicitTurnSeq !== null ? explicitTurnSeq : ++visibleTurnSeq,
+            preview: preview,
+            anchorText: String(request.turnPreview || request.turnAnchor || "").trim(),
+            pendingStarter: false,
+            requests: [],
+            startedAt: request.startedAt,
+            endedAt: request.lastAt || request.startedAt,
+            latestSeq: request.seq,
+          };
+          turnsById.set(explicitTurnId, turn);
+          turns.push(turn);
+        } else {
+          if (explicitTurnSeq !== null) {
+            turn.turnSeq = explicitTurnSeq;
+            visibleTurnSeq = Math.max(visibleTurnSeq, explicitTurnSeq);
+          }
+          if (preview && (!turn.preview || turn.preview === text.turnFallbackPreview)) {
+            turn.preview = preview;
+          }
+        }
+
+        return turn;
+      }
+
+      function findTurnByAnchor(anchorText) {
+        if (!anchorText) return null;
+        for (let index = turns.length - 1; index >= 0; index -= 1) {
+          if (turns[index].anchorText === anchorText) {
+            return turns[index];
+          }
+        }
+        return null;
+      }
+
+      function findExistingExplicitTurn(request) {
+        const explicitTurnId = typeof request.turnId === "string" && request.turnId.trim() ? request.turnId.trim() : "";
+        return explicitTurnId ? (turnsById.get(explicitTurnId) || null) : null;
+      }
+
+      function isStarterRequest(kind) {
+        return kind === "user_turn" || kind === "topic_analysis";
+      }
+
+      orderedRequests.forEach(function (request) {
+        const requestKind = request.requestKind || "user_turn";
+        const anchorText = String(request.turnAnchor || "").trim()
+          || (isStarterRequest(requestKind) ? String(request.turnPreview || "").trim() : "");
+
+        if (requestKind === "probe") {
+          return;
+        }
+
+        if (isStarterRequest(requestKind)) {
+          const explicitTurn = ensureExplicitTurn(request);
+          if (explicitTurn) {
+            attachRequest(explicitTurn, request);
+            currentTurn = explicitTurn;
+            return;
+          }
+        }
+
+        const existingExplicitTurn = findExistingExplicitTurn(request);
+        if (existingExplicitTurn) {
+          attachRequest(existingExplicitTurn, request);
+          currentTurn = existingExplicitTurn;
+          if (requestKind !== "topic_analysis") {
+            currentTurn.pendingStarter = false;
+          }
+          return;
+        }
+
+        if (requestKind === "suggestion_mode") {
+          const targetTurn = currentTurn || findTurnByAnchor(anchorText) || turns[turns.length - 1] || null;
+          if (targetTurn) {
+            attachRequest(targetTurn, request);
+            currentTurn = targetTurn;
+            currentTurn.pendingStarter = false;
+          }
+          return;
+        }
+
+        const canReuseCurrentTurn = currentTurn
+          && (
+            (requestKind === "continuation" && !anchorText)
+            || (anchorText && currentTurn.anchorText === anchorText && (requestKind === "continuation" || currentTurn.pendingStarter))
+          );
+
+        if (canReuseCurrentTurn) {
+          attachRequest(currentTurn, request);
+          if (requestKind !== "topic_analysis") {
+            currentTurn.pendingStarter = false;
+          }
+          return;
+        }
+
+        const anchorTurn = findTurnByAnchor(anchorText);
+        if (anchorTurn && (requestKind === "continuation" || requestKind === "suggestion_mode")) {
+          attachRequest(anchorTurn, request);
+          currentTurn = anchorTurn;
+          currentTurn.pendingStarter = false;
+          return;
+        }
+
+        visibleTurnSeq += 1;
+        currentTurn = {
+          turnId: "ui-turn:" + request.requestId,
+          turnSeq: visibleTurnSeq,
+          preview: anchorText || text.turnFallbackPreview,
+          anchorText,
+          pendingStarter: requestKind === "topic_analysis",
+          requests: [],
+          startedAt: request.startedAt,
+          endedAt: request.lastAt || request.startedAt,
+          latestSeq: request.seq,
+        };
+        turnsById.set(currentTurn.turnId, currentTurn);
+        turns.push(currentTurn);
+        attachRequest(currentTurn, request);
+        if (requestKind !== "topic_analysis") {
+          currentTurn.pendingStarter = false;
+        }
+      });
+
+      return turns
+        .map(function (turn) {
+          turn.requests.sort(function (a, b) { return a.seq - b.seq; });
+          const latestRequest = turn.requests[turn.requests.length - 1] || null;
+          const usageTotals = aggregateRequestUsage(turn.requests);
+          return {
+            turnId: turn.turnId,
+            turnSeq: turn.turnSeq,
+            preview: turn.preview,
+            requests: turn.requests,
+            latestRequestId: latestRequest ? latestRequest.requestId : null,
+            latestRequest: latestRequest,
+            requestCount: turn.requests.length,
+            usageTotals: usageTotals,
+            state: latestRequest ? latestRequest.state : "completed",
+            durationMs: new Date(turn.endedAt).getTime() - new Date(turn.startedAt).getTime(),
+            latestSeq: turn.latestSeq,
+          };
+        })
+        .sort(function (a, b) { return b.turnSeq - a.turnSeq; });
+    }
+
+    function currentSelectedTurn() {
+      if (selectedTurnId) {
+        const matchedTurn = latestState.turns.find(function (item) { return item.turnId === selectedTurnId; }) || null;
+        if (matchedTurn) return matchedTurn;
+      }
+      if (selectedRequestId) {
+        return latestState.turns.find(function (turn) {
+          return turn.requests.some(function (item) { return item.requestId === selectedRequestId; });
+        }) || null;
+      }
+      return null;
+    }
+
+    function currentSelectedRequest() {
+      const selectedTurn = currentSelectedTurn();
+      if (selectedTurn) {
+        if (selectedRequestId) {
+          const matchedRequest = selectedTurn.requests.find(function (item) { return item.requestId === selectedRequestId; });
+          if (matchedRequest) return matchedRequest;
+        }
+        if (selectedTurn.latestRequestId) {
+          return selectedTurn.requests.find(function (item) { return item.requestId === selectedTurn.latestRequestId; }) || null;
+        }
+      }
+      return latestState.requests.find(function (item) { return item.requestId === selectedRequestId; }) || null;
+    }
+
+    function formatRailIndex(index) {
+      var circled = ["❶", "❷", "❸", "❹", "❺", "❻", "❼", "❽", "❾", "❿", "⓫", "⓬", "⓭", "⓮", "⓯", "⓰", "⓱", "⓲", "⓳", "⓴"];
+      return circled[index] || String(index + 1);
+    }
+
+    function requestHasToolResults(request) {
+      const snapshot = request && request.promptSnapshot ? request.promptSnapshot : null;
+      return Boolean(snapshot && Array.isArray(snapshot.messages) && snapshot.messages.some(function (message) {
+        return message && message.toolResultOnly;
+      }));
+    }
+
+    function requestTurnAnchorText(request) {
+      return truncatePreview(deriveTurnAnchorFromSnapshot(request) || request.turnPreview || "", 48);
+    }
+
+    function requestIsConnectivityCheck(request) {
+      const anchor = requestTurnAnchorText(request).toLowerCase();
+      if (!anchor) return false;
+      return anchor.length <= 24 && /(ni hao|nihao|hello|hi|test|测试|连通|ping)/i.test(anchor);
+    }
+
+    function toolPriority(tool) {
+      const name = String(tool && tool.name ? tool.name : "");
+      if (name === "Write" || name === "Edit" || name === "MultiEdit" || name === "NotebookEdit") return 90;
+      if (name === "Bash") return 80;
+      if (name === "Read" || name === "NotebookRead") return 70;
+      if (name === "Grep" || name === "Glob" || name === "LS") return 60;
+      if (name === "WebSearch" || name === "WebFetch") return 50;
+      if (name === "Agent" || name === "Task") return 40;
+      if (name === "TodoWrite" || name === "AskUserQuestion" || name === "Skill" || name === "ExitPlanMode") return 30;
+      if (/^mcp__/i.test(name)) return 20;
+      return 10;
+    }
+
+    function pickPrimaryTool(tools) {
+      return (Array.isArray(tools) ? tools : []).slice().sort(function (a, b) {
+        return toolPriority(b) - toolPriority(a);
+      })[0] || null;
+    }
+
+    function railNodeLabel(request, index, total) {
+      var tools = Array.isArray(request.toolCalls) ? request.toolCalls : [];
+      if (tools.length) {
+        const primaryTool = pickPrimaryTool(tools);
+        return primaryTool ? toolActionTitle(primaryTool) : text.toolActionGeneric;
+      }
+      if (index === 0) {
+        if (requestIsConnectivityCheck(request)) return text.railConnectivityCheck;
+        return total > 1 ? text.railTaskStart : text.railUserInput;
+      }
+      if (index === total - 1) {
+        return requestHasToolResults(request) ? text.railComposeAnswer : text.railFinalResponse;
+      }
+      if (requestHasToolResults(request)) {
+        return text.railAnalyzeResults;
+      }
+      return text.railFinalResponse;
+    }
+
+    function railCacheInfo(request) {
+      var cache = cacheUsageInfo(request);
+      return {
+        newTokens: cache.newTokens,
+        cachedTokens: cache.cachedTokens,
+        total: cache.totalPromptTokens,
+        hitPct: cache.hitPct
+      };
+    }
+
+    function railTooltipText(request) {
+      const cache = railCacheInfo(request);
+      const parts = [];
+      if (cache.total > 0) {
+        parts.push(text.newTokensLabel + " " + formatTokenCount(cache.newTokens));
+        parts.push(text.sentTokensLabel + " " + formatTokenCount(cache.total));
+        parts.push(text.cacheReadLabel + " " + formatTokenCount(cache.cachedTokens));
+      }
+      if (typeof request.outputTokens === "number") {
+        parts.push(text.outputTokensLabel + " " + formatTokenCount(request.outputTokens));
+      }
+      return parts.join("\\n");
+    }
+
+    function renderTurnRail(turn) {
+      if (!turn || !turn.requests.length) {
+        elements.drawerTurnRail.innerHTML = "";
+        return;
+      }
+
+      var parts = [];
+      turn.requests.forEach(function (request, index) {
+        if (index > 0) {
+          parts.push('<div class="rail-connector"></div>');
+        }
+        var toneClass = request.state === "error"
+          ? " is-error"
+          : request.state === "in_flight"
+            ? " is-in-flight"
+            : "";
+        var activeClass = request.requestId === selectedRequestId ? " is-active" : "";
+        var label = railNodeLabel(request, index, turn.requests.length);
+        var tooltip = railTooltipText(request);
+
+        parts.push(
+          '<button class="rail-node' + toneClass + activeClass + (tooltip ? ' has-tooltip is-left' : '') + '" type="button" data-request-id="' + escapeHtml(request.requestId) + '"'
+          + (tooltip ? ' data-tooltip="' + escapeHtml(tooltip) + '"' : '')
+          + '>'
+          + '<div class="rail-node-head">'
+          + '<span class="rail-node-seq">' + escapeHtml(formatRailIndex(index)) + '</span>'
+          + '<span class="rail-node-label">' + escapeHtml(label) + '</span>'
+          + '</div>'
+          + '</button>'
+        );
+      });
+      elements.drawerTurnRail.innerHTML = parts.join("");
+    }
+
+    function setCopyButtonState(button, isConfirmed) {
+      button.innerHTML = isConfirmed ? copiedIconMarkup : copyIconMarkup;
+      button.classList.toggle("is-confirmed", isConfirmed);
+      button.title = isConfirmed ? text.copiedAction : text.copyAction;
+      button.setAttribute("aria-label", isConfirmed ? text.copiedAction : text.copyAction);
+    }
+
+    function getDragOffset(target) {
+      return {
+        x: Number(target.dataset.dragX || "0"),
+        y: Number(target.dataset.dragY || "0")
+      };
+    }
+
+    function applyDragOffset(target, x, y) {
+      target.dataset.dragX = String(x);
+      target.dataset.dragY = String(y);
+      target.style.setProperty("--drag-x", x + "px");
+      target.style.setProperty("--drag-y", y + "px");
+    }
+
+    function clampDragOffset(target, x, y) {
+      applyDragOffset(target, x, y);
+      const rect = target.getBoundingClientRect();
+      const margin = 12;
+      let nextX = x;
+      let nextY = y;
+
+      if (rect.left < margin) nextX += margin - rect.left;
+      if (rect.right > window.innerWidth - margin) nextX -= rect.right - (window.innerWidth - margin);
+      if (rect.top < margin) nextY += margin - rect.top;
+      if (rect.bottom > window.innerHeight - margin) nextY -= rect.bottom - (window.innerHeight - margin);
+
+      applyDragOffset(target, nextX, nextY);
+      return { x: nextX, y: nextY };
+    }
+
+    function bindFloatingDrag(handle, target) {
+      let dragging = null;
+
+      handle.addEventListener("pointerdown", function (event) {
+        if (event.button !== 0) return;
+        if (event.target.closest("button, a, input, textarea, select, summary")) return;
+        const offset = getDragOffset(target);
+        dragging = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          baseX: offset.x,
+          baseY: offset.y,
+          nextX: offset.x,
+          nextY: offset.y,
+          frame: 0
+        };
+        target.classList.add("is-dragging");
+        handle.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+
+      handle.addEventListener("pointermove", function (event) {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        dragging.nextX = dragging.baseX + (event.clientX - dragging.startX);
+        dragging.nextY = dragging.baseY + (event.clientY - dragging.startY);
+        if (!dragging.frame) {
+          dragging.frame = requestAnimationFrame(function () {
+            if (!dragging) return;
+            applyDragOffset(target, dragging.nextX, dragging.nextY);
+            dragging.frame = 0;
+          });
+        }
+      });
+
+      function finishDrag(event) {
+        if (!dragging || dragging.pointerId !== event.pointerId) return;
+        if (dragging.frame) {
+          cancelAnimationFrame(dragging.frame);
+          dragging.frame = 0;
+        }
+        clampDragOffset(target, dragging.nextX, dragging.nextY);
+        target.classList.remove("is-dragging");
+        dragging = null;
+      }
+
+      handle.addEventListener("pointerup", finishDrag);
+      handle.addEventListener("pointercancel", finishDrag);
+      handle.addEventListener("lostpointercapture", function () {
+        target.classList.remove("is-dragging");
+        dragging = null;
+      });
+    }
+
+    function rectsOverlap(a, b) {
+      return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    }
+
+    function detailDrawerRect() {
+      return elements.detailDrawer.getBoundingClientRect();
+    }
+
+    function positionDetailRailPanel() {
+      const drawerRect = detailDrawerRect();
+      const railWidth = elements.detailRailPanel.offsetWidth || 220;
+      const gap = 14;
+      const margin = 12;
+      const isCompact = window.innerWidth <= 900;
+      const left = isCompact
+        ? margin
+        : Math.max(margin, drawerRect.left - railWidth - gap);
+      const top = isCompact
+        ? Math.max(margin, drawerRect.top + 94)
+        : Math.max(margin, drawerRect.top + 118);
+      elements.detailRailPanel.style.left = left + "px";
+      elements.detailRailPanel.style.top = top + "px";
+      applyDragOffset(elements.detailRailPanel, 0, 0);
+      clampDragOffset(elements.detailRailPanel, 0, 0);
+    }
+
+    function findFloatingWindowPosition(windowElement, options) {
+      const margin = 12;
+      const gap = 14;
+      const anchor = detailDrawerRect();
+      const width = windowElement.offsetWidth || (options.wide ? 432 : 420);
+      const height = windowElement.offsetHeight || 260;
+      const preferredRight = Math.min(anchor.right + gap, window.innerWidth - margin - width);
+      const preferredLeft = Math.max(margin, anchor.left - gap - width);
+      const topBase = Math.max(margin, anchor.top + 96);
+      const existingRects = Array.from(floatingWindows.values()).map(function (entry) {
+        return entry.element.getBoundingClientRect();
+      });
+
+      function tryColumn(left) {
+        let top = topBase;
+        for (let guard = 0; guard < 32; guard += 1) {
+          const candidate = {
+            left: left,
+            right: left + width,
+            top: top,
+            bottom: top + height
+          };
+          const blocking = existingRects.find(function (rect) {
+            return rectsOverlap(candidate, {
+              left: rect.left - gap,
+              right: rect.right + gap,
+              top: rect.top - gap,
+              bottom: rect.bottom + gap
+            });
+          }) || null;
+
+          if (!blocking && candidate.bottom <= window.innerHeight - margin) {
+            return { left: candidate.left, top: candidate.top };
+          }
+
+          if (blocking) {
+            top = blocking.bottom + gap;
+            continue;
+          }
+          break;
+        }
+        return null;
+      }
+
+      const columns = [preferredRight];
+      const secondRight = preferredRight + width + gap;
+      if (secondRight + width <= window.innerWidth - margin) columns.push(secondRight);
+      if (preferredLeft >= margin) columns.push(preferredLeft);
+
+      for (const left of columns) {
+        const hit = tryColumn(left);
+        if (hit) return hit;
+      }
+
+      return {
+        left: Math.max(margin, Math.min(preferredRight, window.innerWidth - margin - width)),
+        top: Math.max(margin, Math.min(topBase, window.innerHeight - margin - height))
+      };
+    }
+
+    function isFloatingWindowOpen(key) {
+      return floatingWindows.has(key);
+    }
+
+    function bringFloatingWindowToFront(windowRecordOrKey) {
+      const windowRecord = typeof windowRecordOrKey === "string"
+        ? floatingWindows.get(windowRecordOrKey)
+        : windowRecordOrKey;
+      if (!windowRecord) return null;
+      floatingWindowZ += 1;
+      windowRecord.element.style.zIndex = String(floatingWindowZ);
+      floatingWindows.forEach(function (entry) {
+        entry.element.classList.toggle("is-active", entry === windowRecord);
+      });
+      return windowRecord;
+    }
+
+    function closeFloatingWindow(key) {
+      const windowRecord = floatingWindows.get(key);
+      if (!windowRecord) return;
+      floatingWindows.delete(key);
+      windowRecord.element.classList.remove("is-open");
+      windowRecord.element.classList.remove("is-active");
+      syncOverlayButtons();
+      syncPromptItemSelection();
+      syncAnswerItemSelection();
+      syncToolCardSelection();
+      const nextTopWindow = Array.from(floatingWindows.values()).sort(function (a, b) {
+        return Number(b.element.style.zIndex || "0") - Number(a.element.style.zIndex || "0");
+      })[0] || null;
+      if (nextTopWindow) {
+        bringFloatingWindowToFront(nextTopWindow);
+      }
+      setTimeout(function () {
+        windowRecord.element.remove();
+      }, 180);
+    }
+
+    function closeFloatingWindowsByFamily(family) {
+      Array.from(floatingWindows.entries()).forEach(function (entry) {
+        if (entry[1].family === family) {
+          closeFloatingWindow(entry[0]);
+        }
+      });
+    }
+
+    function closeAllFloatingWindows() {
+      Array.from(floatingWindows.keys()).forEach(function (key) {
+        closeFloatingWindow(key);
+      });
+    }
+
+    function closeTopFloatingWindow() {
+      const topWindow = Array.from(floatingWindows.values()).sort(function (a, b) {
+        return Number(b.element.style.zIndex || "0") - Number(a.element.style.zIndex || "0");
+      })[0] || null;
+      if (!topWindow) return false;
+      closeFloatingWindow(topWindow.key);
+      return true;
+    }
+
+    function createFloatingWindow(options) {
+      const existing = floatingWindows.get(options.key) || null;
+      if (existing) {
+        if (options.toggleIfExists) {
+          closeFloatingWindow(options.key);
+          return null;
+        }
+        return bringFloatingWindowToFront(existing);
+      }
+
+      const windowElement = document.createElement("aside");
+      windowElement.className = "floating-window" + (options.wide ? " is-wide" : "");
+      windowElement.dataset.windowKey = options.key;
+      windowElement.style.left = "-9999px";
+      windowElement.style.top = "-9999px";
+
+      const head = document.createElement("div");
+      head.className = "floating-window-head";
+
+      const copy = document.createElement("div");
+      copy.className = "floating-window-copy";
+
+      if (options.group) {
+        const group = document.createElement("div");
+        group.className = "floating-window-group";
+        group.textContent = options.group;
+        copy.appendChild(group);
+      }
+
+      const title = document.createElement("div");
+      title.className = "floating-window-title" + (options.monoTitle ? " is-mono" : "");
+      title.textContent = options.title || "--";
+      copy.appendChild(title);
+
+      if (options.meta) {
+        const meta = document.createElement("div");
+        meta.className = "floating-window-meta";
+        meta.textContent = options.meta;
+        copy.appendChild(meta);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "floating-window-actions";
+
+      let copyResetTimer = null;
+      if (options.copyText) {
+        const copyButton = document.createElement("button");
+        copyButton.className = "icon-button";
+        copyButton.type = "button";
+        setCopyButtonState(copyButton, false);
+        copyButton.addEventListener("click", async function () {
+          try {
+            await navigator.clipboard.writeText(options.copyText);
+            if (copyResetTimer) clearTimeout(copyResetTimer);
+            setCopyButtonState(copyButton, true);
+            copyResetTimer = setTimeout(function () {
+              setCopyButtonState(copyButton, false);
+              copyResetTimer = null;
+            }, 1200);
+          } catch {
+            setCopyButtonState(copyButton, false);
+          }
+        });
+        actions.appendChild(copyButton);
+      }
+
+      const closeButton = document.createElement("button");
+      closeButton.className = "icon-button";
+      closeButton.type = "button";
+      closeButton.title = text.closeAction;
+      closeButton.setAttribute("aria-label", text.closeAction);
+      closeButton.innerHTML = closeIconMarkup;
+      closeButton.addEventListener("click", function () {
+        closeFloatingWindow(options.key);
+      });
+      actions.appendChild(closeButton);
+
+      head.appendChild(copy);
+      head.appendChild(actions);
+
+      const body = document.createElement("div");
+      body.className = "floating-window-body";
+      body.innerHTML = options.bodyHtml || '<div class="block-content">--</div>';
+
+      windowElement.appendChild(head);
+      windowElement.appendChild(body);
+      elements.floatingWindowHost.appendChild(windowElement);
+
+      const windowRecord = {
+        key: options.key,
+        family: options.family,
+        element: windowElement
+      };
+      floatingWindows.set(options.key, windowRecord);
+
+      bindFloatingDrag(head, windowElement);
+      windowElement.addEventListener("pointerdown", function () {
+        bringFloatingWindowToFront(windowRecord);
+      });
+
+      requestAnimationFrame(function () {
+        const position = findFloatingWindowPosition(windowElement, options);
+        windowElement.style.left = String(position.left) + "px";
+        windowElement.style.top = String(position.top) + "px";
+        clampDragOffset(windowElement, 0, 0);
+        windowElement.classList.add("is-open");
+        bringFloatingWindowToFront(windowRecord);
+      });
+
+      syncOverlayButtons();
+      syncPromptItemSelection();
+      syncToolCardSelection();
+      return windowRecord;
+    }
+
+    function syncOverlayButtons() {
+      elements.drawerMetadataButton.classList.toggle("is-active", isFloatingWindowOpen("overlay:metadata"));
+      elements.drawerTransportButton.classList.toggle("is-active", isFloatingWindowOpen("overlay:transport"));
+      elements.promptRawButton.classList.toggle("is-active", isFloatingWindowOpen("raw-info"));
+    }
+
+    function closeDrawerOverlay() {
+      closeFloatingWindowsByFamily("overlay");
+    }
+
+    function openDrawerOverlay(kind) {
+      const turn = currentSelectedTurn();
+      const request = currentSelectedRequest();
+      if (!request) return;
+
+      let title = "";
+      let body = "";
+      let copyText = "";
+
+      if (kind === "metadata") {
+        title = text.metadata;
+        body = renderDetailRows([
+          { label: text.turnLabel, value: typeof (turn && turn.turnSeq) === "number" ? "#" + turn.turnSeq : "--", mono: true },
+          { label: text.promptGroupUser, value: turn && turn.preview ? turn.preview : text.turnFallbackPreview, mono: false },
+          { label: text.requestIdLabel, value: request.requestId, mono: true },
+          { label: text.sequenceLabel, value: String(request.seq), mono: true },
+          { label: text.terminalNodeLabel, value: runId, mono: true },
+          { label: text.activeAgentLabel, value: text.mainAgent, mono: false },
+          { label: text.totalDurationLabel, value: formatDuration(request.durationMs), mono: true },
+          { label: text.timestampLabel, value: formatDateTime(request.startedAt), mono: true }
+        ]);
+      } else if (kind === "transport") {
+        title = text.transportLayer;
+        body = renderDetailRows([
+          { label: text.methodLabel, value: request.method || "POST", mono: true },
+          { label: text.endpointPathLabel, value: request.path || "/v1/messages", mono: true },
+          { label: text.statusCodeLabel, value: request.status === null ? "--" : String(request.status), mono: true },
+          { label: text.modelLabel, value: request.model || "--", mono: false },
+          { label: text.usageLabel, value: formatTokenSummary(request), mono: true },
+          { label: text.tableBytes, value: formatByteSummary(request), mono: true },
+          { label: text.eventTypeLabel, value: formatEventType(request.lastEventType).main, mono: false },
+          { label: text.tableStream, value: request.stream ? text.streamMode : text.bufferedMode, mono: false },
+          { label: text.noteLabel, value: request.note || "--", mono: true }
+        ]);
+      } else {
+        return;
+      }
+
+      createFloatingWindow({
+        key: "overlay:" + kind,
+        family: "overlay",
+        group: "",
+        title: title,
+        meta: "",
+        monoTitle: true,
+        wide: true,
+        copyText: copyText,
+        bodyHtml: body,
+        toggleIfExists: true
+      });
+    }
+
+    async function fetchDashboardSettings() {
+      const response = await fetch("/__melu/settings", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("HTTP " + response.status);
+      }
+      return response.json();
+    }
+
+    function renderSettingsPanelBody(payload) {
+      const languageOptions = Array.isArray(payload && payload.languageOptions) ? payload.languageOptions : [];
+      const mirrorOptions = Array.isArray(payload && payload.mirrorOptions) ? payload.mirrorOptions : [];
+      const currentLanguage = typeof (payload && payload.uiLanguage) === "string" ? payload.uiLanguage : "en";
+      const memoryEnabled = payload && payload.memoryEnabled !== false;
+      const autoOpenDashboard = payload && payload.autoOpenDashboard !== false;
+      const modelDownloaded = Boolean(payload && payload.modelDownloaded);
+      const currentMirror = typeof (payload && payload.mirror) === "string" ? payload.mirror : "";
+      const memoryTooltip = text.settingsMemoryTooltip;
+      const autoOpenTooltip = text.settingsAutoOpenTooltip;
+      return '<div class="settings-stack">'
+        + '<label class="settings-field">'
+        + '<span class="settings-label">' + escapeHtml(text.settingsLanguageLabel) + '</span>'
+        + '<select class="settings-select" data-settings-language>'
+        + languageOptions.map(function (option) {
+          const value = String(option && option.value ? option.value : "");
+          const label = String(option && option.label ? option.label : value);
+          return '<option value="' + escapeHtml(value) + '"' + (value === currentLanguage ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join("")
+        + '</select>'
+        + '</label>'
+        + '<label class="settings-field">'
+        + '<span class="settings-label">' + escapeHtml(text.settingsMirrorLabel) + '</span>'
+        + '<select class="settings-select" data-settings-mirror>'
+        + mirrorOptions.map(function (option) {
+          const value = String(option && option.value ? option.value : "");
+          const label = String(option && option.label ? option.label : value);
+          return '<option value="' + escapeHtml(value) + '"' + (value === currentMirror ? ' selected' : '') + '>' + escapeHtml(label) + '</option>';
+        }).join("")
+        + '</select>'
+        + '</label>'
+        + '<div class="settings-card"><div class="settings-card-head">'
+        + '<div class="settings-card-copy">'
+        + '<div class="settings-card-title-row">'
+        + '<div class="settings-card-title">' + escapeHtml(text.settingsMemoryLabel) + '</div>'
+        + '<button class="settings-info has-tooltip" type="button" data-tooltip="' + escapeHtml(memoryTooltip) + '" aria-label="' + escapeHtml(text.settingsMemoryLabel) + '">i</button>'
+        + '</div>'
+        + '<div class="settings-card-meta">'
+        + '<span class="settings-status-pill">' + escapeHtml(text.settingsNextRunBadge) + '</span>'
+        + '<span class="settings-status-pill ' + (modelDownloaded ? 'is-ready' : 'is-pending') + '">' + escapeHtml(modelDownloaded ? text.settingsMemoryReady : text.settingsMemoryMissing) + '</span>'
+        + '</div>'
+        + '</div>'
+        + '<label class="settings-switch">'
+        + '<input type="checkbox" data-settings-memory' + (memoryEnabled ? ' checked' : '') + ' aria-label="' + escapeHtml(text.settingsMemoryLabel) + '" />'
+        + '<span class="settings-switch-track" aria-hidden="true"></span>'
+        + '</label>'
+        + '</div></div>'
+        + '<div class="settings-card"><div class="settings-card-head">'
+        + '<div class="settings-card-copy">'
+        + '<div class="settings-card-title-row">'
+        + '<div class="settings-card-title">' + escapeHtml(text.settingsAutoOpenLabel) + '</div>'
+        + '<button class="settings-info has-tooltip" type="button" data-tooltip="' + escapeHtml(autoOpenTooltip) + '" aria-label="' + escapeHtml(text.settingsAutoOpenLabel) + '">i</button>'
+        + '</div>'
+        + '<div class="settings-card-meta"><span class="settings-status-pill">' + escapeHtml(text.settingsNextRunBadge) + '</span></div>'
+        + '</div>'
+        + '<label class="settings-switch">'
+        + '<input type="checkbox" data-settings-auto-open' + (autoOpenDashboard ? ' checked' : '') + ' aria-label="' + escapeHtml(text.settingsAutoOpenLabel) + '" />'
+        + '<span class="settings-switch-track" aria-hidden="true"></span>'
+        + '</label>'
+        + '</div></div>'
+        + '<div class="settings-actions"><button class="settings-save" type="button" data-settings-save>' + escapeHtml(text.settingsSaveAction) + '</button></div>'
+        + '<div class="settings-feedback" data-settings-feedback></div>'
+        + '</div>';
+    }
+
+    async function openSettingsPanel() {
+      const existing = floatingWindows.get("settings");
+      if (existing) {
+        closeFloatingWindow("settings");
+        return;
+      }
+
+      if (!settingsLoadPromise) {
+        settingsLoadPromise = fetchDashboardSettings().finally(function () {
+          settingsLoadPromise = null;
+        });
+      }
+
+      try {
+        const payload = await settingsLoadPromise;
+        createFloatingWindow({
+          key: "settings",
+          family: "settings",
+          group: "",
+          title: text.settingsTitle,
+          meta: "",
+          bodyHtml: renderSettingsPanelBody(payload),
+          toggleIfExists: true
+        });
+      } catch (error) {
+        createFloatingWindow({
+          key: "settings",
+          family: "settings",
+          group: "",
+          title: text.settingsTitle,
+          meta: "",
+          bodyHtml: '<div class="block-content">' + escapeHtml(error instanceof Error ? error.message : String(error)) + '</div>',
+          toggleIfExists: true
+        });
+      }
+    }
+
+    async function saveSettingsFromPanel(button) {
+      const panel = button.closest(".floating-window");
+      if (!panel) return;
+      const languageSelect = panel.querySelector("[data-settings-language]");
+      const mirrorSelect = panel.querySelector("[data-settings-mirror]");
+      const memoryInput = panel.querySelector("[data-settings-memory]");
+      const autoOpenInput = panel.querySelector("[data-settings-auto-open]");
+      const feedback = panel.querySelector("[data-settings-feedback]");
+      const payload = {
+        uiLanguage: languageSelect ? languageSelect.value : "en",
+        mirror: mirrorSelect ? mirrorSelect.value : null,
+        memoryEnabled: Boolean(memoryInput && memoryInput.checked),
+        autoOpenDashboard: Boolean(autoOpenInput && autoOpenInput.checked)
+      };
+
+      button.disabled = true;
+      button.textContent = text.settingsSaving;
+      if (feedback) feedback.textContent = "";
+
+      try {
+        const response = await fetch("/__melu/settings", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          let message = "HTTP " + response.status;
+          try {
+            const errorPayload = await response.json();
+            if (errorPayload && typeof errorPayload.error === "string") {
+              message = errorPayload.error;
+            }
+          } catch {}
+          throw new Error(message);
+        }
+        if (feedback) feedback.textContent = text.settingsSaved;
+        setTimeout(function () {
+          window.location.reload();
+        }, 180);
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = text.settingsSaveAction;
+        if (feedback) {
+          feedback.textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+    }
+
+    function closePromptItemPanel() {
+      closeFloatingWindowsByFamily("prompt");
+      closeFloatingWindowsByFamily("answer");
+      closeFloatingWindowsByFamily("raw");
+    }
+
+    function openPromptSidePanel(options) {
+      const panelKind = options.kind || "prompt-item";
+      const itemId = options.itemId || null;
+      const family = options.family || (panelKind === "raw-info" ? "raw" : "prompt");
+      const key = options.key || (panelKind === "raw-info" ? "raw-info" : family + ":" + itemId);
+      createFloatingWindow({
+        key: key,
+        family: family,
+        group: options.group || "",
+        title: options.title || "--",
+        meta: options.meta || "",
+        monoTitle: panelKind === "raw-info",
+        wide: panelKind === "raw-info",
+        copyText: options.copyText || "",
+        bodyHtml: options.body || '<div class="block-content">--</div>',
+        toggleIfExists: panelKind === "raw-info"
+      });
+    }
+
+    function openPromptItemPanel(itemId) {
+      const item = promptItemRegistry.get(itemId);
+      if (!item) return;
+      openPromptSidePanel({
+        kind: "prompt-item",
+        itemId: itemId,
+        family: "prompt",
+        group: item.groupTitle || text.promptInsightTitle,
+        title: item.title || "--",
+        meta: item.meta || "",
+        body: '<div class="block-content">' + escapeHtml(item.content || "--") + '</div>'
+      });
+    }
+
+    function openAnswerItemPanel(itemId) {
+      const item = answerItemRegistry.get(itemId);
+      if (!item) return;
+      openPromptSidePanel({
+        kind: "answer-item",
+        itemId: itemId,
+        family: "answer",
+        key: "answer:" + itemId,
+        group: item.groupTitle || text.answerInsightTitle,
+        title: item.title || "--",
+        meta: item.meta || "",
+        body: '<div class="block-content">' + escapeHtml(item.content || "--") + '</div>'
+      });
+    }
+
+    function openRawInfoPanel() {
+      const request = currentSelectedRequest();
+      if (!request) return;
+      const snapshot = request.promptSnapshot;
+      const rawBody = snapshot && snapshot.rawRequestBody ? snapshot.rawRequestBody : "";
+      const rawMeta = []
+        .concat(request.method ? [request.method + " " + (request.path || "/v1/messages")] : [])
+        .concat(rawBody ? [formatCharCount(rawBody.length)] : [])
+        .join(" · ");
+
+      openPromptSidePanel({
+        kind: "raw-info",
+        group: text.promptInsightTitle,
+        title: text.rawPromptTitle,
+        meta: rawMeta,
+        copyText: rawBody,
+        body: snapshot
+          ? (snapshot.rawRequestTruncated ? '<div class="overlay-note">' + escapeHtml(text.rawPromptTruncatedNotice) + '</div>' : '')
+            + '<pre class="raw-pre">' + escapeHtml(rawBody || "--") + '</pre>'
+          : '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>'
+      });
+    }
+
+    function openToolPanel(index) {
+      const request = currentSelectedRequest();
+      if (!request) return;
+      const toolCalls = Array.isArray(request.toolCalls) ? request.toolCalls : [];
+      const tool = toolCalls[index] || null;
+      if (!tool) return;
+
+      const nativeDescription = toolNativeDescription(tool);
+      const keyFields = toolKeyFields(tool);
+      const inputPayload = safeJson(tool.input);
+      const rows = [];
+
+      if (nativeDescription) {
+        rows.push({ label: text.toolLabelDescription, value: nativeDescription, mono: false });
+      }
+      keyFields.forEach(function (entry) {
+        rows.push({ label: entry[0], value: String(entry[1]), mono: false });
+      });
+      rows.push({ label: text.toolLabelOriginalName, value: tool.name || "--", mono: false });
+
+      const meta = []
+        .concat(toolActionSummary(tool) ? [toolActionSummary(tool)] : [])
+        .concat([toolBadgeLabel(tool)])
+        .join(" · ");
+
+      createFloatingWindow({
+        key: toolPanelKey(request.requestId, index),
+        family: "tool",
+        group: text.answerInsightTitle,
+        title: toolActionTitle(tool),
+        meta: meta,
+        wide: true,
+        copyText: inputPayload,
+        bodyHtml: renderDetailRows(rows)
+          + '<div class="raw-panel">'
+          + '<div class="raw-note">' + escapeHtml(text.rawToolInputLabel) + '</div>'
+          + '<pre class="raw-pre">' + escapeHtml(inputPayload || "--") + '</pre>'
+          + '</div>',
+        toggleIfExists: true
+      });
+    }
+
     function summarizeRequests(events) {
       const byRequest = new Map();
 
@@ -2844,6 +6016,10 @@ export function buildProxyTraceDashboardHtml(
         if (!entry) {
           entry = {
             requestId: event.requestId,
+            requestKind: typeof event.requestKind === "string" ? event.requestKind : "user_turn",
+            turnId: typeof event.turnId === "string" ? event.turnId : null,
+            turnSeq: typeof event.turnSeq === "number" ? event.turnSeq : null,
+            turnPreview: typeof event.turnPreview === "string" ? event.turnPreview : null,
             seq: event.seq,
             startedAt: event.timestamp,
             lastAt: event.timestamp,
@@ -2857,8 +6033,11 @@ export function buildProxyTraceDashboardHtml(
             durationMs: typeof event.durationMs === "number" ? event.durationMs : null,
             inputTokens: typeof event.inputTokens === "number" ? event.inputTokens : null,
             outputTokens: typeof event.outputTokens === "number" ? event.outputTokens : null,
+            cacheCreationTokens: typeof event.cacheCreationTokens === "number" ? event.cacheCreationTokens : null,
+            cacheReadTokens: typeof event.cacheReadTokens === "number" ? event.cacheReadTokens : null,
             note: event.note || null,
             promptSnapshot: event.promptSnapshot || null,
+            responseSnapshot: event.responseSnapshot || null,
             toolCalls: Array.isArray(event.toolCalls) ? event.toolCalls : [],
             lastEventType: event.type,
             state: "in_flight"
@@ -2867,6 +6046,10 @@ export function buildProxyTraceDashboardHtml(
         }
 
         entry.lastAt = event.timestamp;
+        if (typeof event.requestKind === "string") entry.requestKind = event.requestKind;
+        if (typeof event.turnId === "string") entry.turnId = event.turnId;
+        if (typeof event.turnSeq === "number") entry.turnSeq = event.turnSeq;
+        if (typeof event.turnPreview === "string" && event.turnPreview.trim()) entry.turnPreview = event.turnPreview;
         entry.method = event.method || entry.method;
         entry.path = event.path || entry.path;
         entry.stream = Boolean(event.stream);
@@ -2877,8 +6060,11 @@ export function buildProxyTraceDashboardHtml(
         if (typeof event.durationMs === "number") entry.durationMs = event.durationMs;
         if (typeof event.inputTokens === "number") entry.inputTokens = event.inputTokens;
         if (typeof event.outputTokens === "number") entry.outputTokens = event.outputTokens;
+        if (typeof event.cacheCreationTokens === "number") entry.cacheCreationTokens = event.cacheCreationTokens;
+        if (typeof event.cacheReadTokens === "number") entry.cacheReadTokens = event.cacheReadTokens;
         if (event.note) entry.note = event.note;
         if (event.promptSnapshot) entry.promptSnapshot = event.promptSnapshot;
+        if (event.responseSnapshot) entry.responseSnapshot = event.responseSnapshot;
         if (Array.isArray(event.toolCalls) && event.toolCalls.length) entry.toolCalls = event.toolCalls;
         entry.lastEventType = event.type;
 
@@ -2894,7 +6080,13 @@ export function buildProxyTraceDashboardHtml(
         }
       });
 
-      return Array.from(byRequest.values()).sort(function (a, b) { return b.seq - a.seq; });
+      return Array.from(byRequest.values())
+        .map(function (entry) {
+          entry.requestKind = inferRequestKindFromSnapshot(entry);
+          entry.turnAnchor = deriveTurnAnchorFromSnapshot(entry);
+          return entry;
+        })
+        .sort(function (a, b) { return b.seq - a.seq; });
     }
 
     function buildStats(requests, events) {
@@ -2908,6 +6100,12 @@ export function buildProxyTraceDashboardHtml(
       }, 0);
       const totalOutputTokens = requests.reduce(function (sum, request) {
         return sum + (typeof request.outputTokens === "number" ? request.outputTokens : 0);
+      }, 0);
+      const totalCacheCreationTokens = requests.reduce(function (sum, request) {
+        return sum + (typeof request.cacheCreationTokens === "number" ? request.cacheCreationTokens : 0);
+      }, 0);
+      const totalCacheReadTokens = requests.reduce(function (sum, request) {
+        return sum + (typeof request.cacheReadTokens === "number" ? request.cacheReadTokens : 0);
       }, 0);
       const latencySource = completed.length ? completed : requests.filter(function (request) {
         return request.state === "completed" || request.state === "error";
@@ -2926,7 +6124,9 @@ export function buildProxyTraceDashboardHtml(
         receiveStartEvents: receiveStartEvents,
         totalInputTokens: totalInputTokens,
         totalOutputTokens: totalOutputTokens,
-        totalTokens: totalInputTokens + totalOutputTokens,
+        totalTokens: totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens,
+        totalCacheCreationTokens: totalCacheCreationTokens,
+        totalCacheReadTokens: totalCacheReadTokens,
         successRate: closedCount ? Math.round((completed.length / closedCount) * 100) : null,
         averageLatencyMs: mean(finishedDurations),
         p95LatencyMs: percentile(finishedDurations, 95),
@@ -2948,15 +6148,14 @@ export function buildProxyTraceDashboardHtml(
       return { label: text.steadyStatus, tone: "steady" };
     }
 
-    function applyFilters(requests) {
+    function applyFilters(turns) {
       const normalizedSearch = searchTerm.trim().toLowerCase();
-      return requests.filter(function (request) {
-        if (activeFilter !== "all" && request.state !== activeFilter) return false;
+      return turns.filter(function (turn) {
+        if (activeFilter !== "all" && turn.state !== activeFilter) return false;
         if (!normalizedSearch) return true;
-        return request.requestId.toLowerCase().includes(normalizedSearch)
-          || request.path.toLowerCase().includes(normalizedSearch)
-          || String(request.seq).includes(normalizedSearch)
-          || String(request.model || "").toLowerCase().includes(normalizedSearch);
+        return String(turn.turnSeq || "").includes(normalizedSearch)
+          || String(turn.preview || "").toLowerCase().includes(normalizedSearch)
+          || String(turn.latestRequestId || "").toLowerCase().includes(normalizedSearch);
       });
     }
 
@@ -2969,6 +6168,15 @@ export function buildProxyTraceDashboardHtml(
       elements.sessionStart.textContent = formatTime(stats.firstSeenAt);
       elements.sessionStatusText.textContent = isOffline ? text.disconnectedStatus : status.label;
       elements.sessionStatusPill.dataset.tone = isOffline ? "ready" : status.tone;
+      if (!isOffline && stats.inFlight > 0) {
+        elements.sessionInflightIndicator.hidden = false;
+        elements.sessionInflightIndicator.textContent = text.inFlight + " " + stats.inFlight;
+        elements.sessionInflightIndicator.classList.add("is-visible");
+      } else {
+        elements.sessionInflightIndicator.hidden = true;
+        elements.sessionInflightIndicator.textContent = "";
+        elements.sessionInflightIndicator.classList.remove("is-visible");
+      }
 
       if (stats.highTraffic) {
         elements.trafficWarning.classList.add("is-visible");
@@ -2978,42 +6186,82 @@ export function buildProxyTraceDashboardHtml(
 
       elements.emptyTracePath.textContent = text.traceFileLabel + ": " + tracePath;
       elements.footerPath.textContent = text.footerPath + ": " + tracePath;
+      elements.footerPath.href = traceFileHref;
+      elements.footerPath.title = text.openTraceAction;
     }
 
     function renderCards(stats) {
+      var totalNewTokens = stats.totalInputTokens + stats.totalCacheCreationTokens;
+      var totalPromptTokens = totalNewTokens + stats.totalCacheReadTokens;
+      var hitPct = totalPromptTokens > 0 ? Math.round((stats.totalCacheReadTokens / totalPromptTokens) * 100) : 0;
       elements.cardTotal.textContent = String(stats.totalRequests);
       elements.cardUp.textContent = text.uploadLabel + " " + stats.uploadEvents;
       elements.cardDown.textContent = text.receiveLabel + " " + stats.receiveStartEvents;
-      elements.cardInFlight.textContent = String(stats.inFlight);
-      elements.cardInFlightSub.textContent = stats.inFlight > 0 ? text.liveStatus : text.completedBadge;
       elements.cardSuccessRate.textContent = stats.successRate === null ? "--" : stats.successRate + "%";
       elements.cardSuccessCount.textContent = text.completedBadge + ": " + stats.completed;
       elements.cardErrorCount.textContent = text.errorBadge + ": " + stats.failed;
       elements.cardLatency.textContent = stats.totalTokens ? formatTokenCount(stats.totalTokens) : "--";
-      elements.cardP95.textContent = text.inputTokensLabel + ": " + formatTokenCount(stats.totalInputTokens) + " · " + text.outputTokensLabel + ": " + formatTokenCount(stats.totalOutputTokens);
+      elements.cardInputTokens.innerHTML = '<span>' + escapeHtml(totalPromptTokens ? text.newTokensLabel : text.inputTokensLabel) + '</span><strong>' + escapeHtml(formatTokenCount(totalPromptTokens ? totalNewTokens : stats.totalInputTokens)) + '</strong>';
+      elements.cardOutputTokens.innerHTML = stats.totalCacheReadTokens > 0 || stats.totalCacheCreationTokens > 0
+        ? '<span>' + escapeHtml(text.cachedTokensLabel + " · " + hitPct + "% " + text.cacheHitLabel) + '</span><strong>' + escapeHtml(formatTokenCount(stats.totalCacheReadTokens)) + '</strong>'
+        : '<span>' + escapeHtml(text.outputTokensLabel) + '</span><strong>' + escapeHtml(formatTokenCount(stats.totalOutputTokens)) + '</strong>';
     }
 
     function renderTimeline(requests) {
-      const recent = requests.slice().reverse().slice(-48);
-      elements.timelineMeta.textContent = text.timelineRange + " · " + recent.length + " · " + text.timelineLegend;
+      const recent = requests.slice()
+        .sort(function (a, b) {
+          return new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime();
+        })
+        .slice(-48);
 
       if (!recent.length) {
-        elements.timelineBars.innerHTML = '<div style="color:var(--muted);font-size:12px;">' + escapeHtml(text.noRequestsFound) + '</div>';
+        elements.timelineMeta.textContent = text.timelineLegend;
+        elements.timelineBars.innerHTML = '<div class="timeline-empty">' + escapeHtml(text.noRequestsFound) + '</div>';
         return;
       }
 
+      const startMs = recent.reduce(function (minValue, request) {
+        return Math.min(minValue, new Date(request.startedAt).getTime());
+      }, Number.POSITIVE_INFINITY);
+      const endMs = recent.reduce(function (maxValue, request) {
+        const requestEnd = request.lastAt ? new Date(request.lastAt).getTime() : new Date(request.startedAt).getTime();
+        return Math.max(maxValue, requestEnd);
+      }, 0);
+      const safeStartMs = Number.isFinite(startMs) ? startMs : Date.now();
+      const safeEndMs = Math.max(safeStartMs, endMs);
+      const spanMs = Math.max(1000, safeEndMs - safeStartMs);
       const maxDuration = recent.reduce(function (maxValue, request) {
         const duration = typeof request.durationMs === "number" ? request.durationMs : 400;
         return Math.max(maxValue, duration);
       }, 400);
-
-      elements.timelineBars.innerHTML = recent.map(function (request) {
+      const gridLines = [0, 25, 50, 75, 100].map(function (percent) {
+        return '<span class="timeline-grid-line" style="left:' + percent + '%"></span>';
+      }).join("");
+      const bars = recent.map(function (request) {
         const duration = typeof request.durationMs === "number" ? request.durationMs : 320;
         const height = Math.max(22, Math.round((duration / maxDuration) * 130));
         const tone = modelTone(request.model);
         const stateClass = request.state === "error" ? " is-error" : request.state === "in_flight" ? " is-in-flight" : "";
-        return '<button class="timeline-bar ' + tone + stateClass + '" style="height:' + height + 'px" data-request-id="' + escapeHtml(request.requestId) + '" title="' + escapeHtml(request.requestId + " · " + formatDuration(request.durationMs)) + '"></button>';
+        const startedAtMs = new Date(request.startedAt).getTime();
+        const leftPct = spanMs <= 0 ? 50 : ((startedAtMs - safeStartMs) / spanMs) * 100;
+        const clampedLeftPct = Math.min(99.2, Math.max(0.8, leftPct));
+        const title = [
+          request.requestId,
+          formatTime(request.startedAt),
+          formatDuration(request.durationMs)
+        ].join(" · ");
+        return '<button class="timeline-bar ' + tone + stateClass + '" style="left:' + clampedLeftPct + '%;height:' + height + 'px" data-request-id="' + escapeHtml(request.requestId) + '" title="' + escapeHtml(title) + '"></button>';
       }).join("");
+      elements.timelineMeta.textContent = formatTime(new Date(safeStartMs).toISOString()) + " -> " + formatTime(new Date(safeEndMs).toISOString()) + " · " + recent.length + " " + text.timelineRequestUnit + " · " + text.timelineLegend;
+      elements.timelineBars.innerHTML = '<div class="timeline-stage">'
+        + gridLines
+        + '<div class="timeline-baseline"></div>'
+        + bars
+        + '</div>'
+        + '<div class="timeline-axis">'
+        + '<span class="timeline-axis-label">' + escapeHtml(formatTime(new Date(safeStartMs).toISOString())) + '</span>'
+        + '<span class="timeline-axis-label">' + escapeHtml(formatTime(new Date(safeEndMs).toISOString())) + '</span>'
+        + '</div>';
     }
 
     function statusBadge(request) {
@@ -3026,176 +6274,443 @@ export function buildProxyTraceDashboardHtml(
       return '<span class="badge in-flight">' + escapeHtml(text.inFlightBadge) + '</span>';
     }
 
-    function renderTable(requests) {
-      if (!requests.length) {
-        elements.requestTableBody.innerHTML = '<tr><td colspan="8" style="padding:28px 20px;color:var(--muted);text-align:center;">' + escapeHtml(text.noRequestsFound) + '</td></tr>';
+    function renderTurnUsageCell(turn, maxPromptTokens) {
+      const usageTotals = turn.usageTotals || aggregateRequestUsage(turn.requests);
+      const hasPromptTokens = usageTotals.promptTokens > 0;
+      const tokenWidth = hasPromptTokens
+        ? Math.max(6, Math.round((usageTotals.promptTokens / maxPromptTokens) * 100))
+        : 0;
+      const tokenPrimary = hasPromptTokens
+        ? (usageTotals.newTokens > 0 ? "+" + formatTokenCount(usageTotals.newTokens) : "0")
+        : usageTotals.totalTokens > 0
+          ? formatTokenCount(usageTotals.totalTokens)
+          : "--";
+      const tokenMeta = hasPromptTokens
+        ? formatTokenCount(usageTotals.promptTokens) + " " + text.sentTokensLabel + " · " + usageTotals.hitPct + "% " + text.cacheHitLabel
+        : usageTotals.outputTokens > 0
+          ? formatTokenCount(usageTotals.outputTokens) + " " + text.outputTokensLabel
+          : "--";
+      const tokenTooltipParts = [];
+      if (hasPromptTokens) {
+        tokenTooltipParts.push(text.newTokensLabel + " " + formatTokenCount(usageTotals.newTokens));
+        tokenTooltipParts.push(text.sentTokensLabel + " " + formatTokenCount(usageTotals.promptTokens));
+        tokenTooltipParts.push(text.cachedTokensLabel + " " + formatTokenCount(usageTotals.cachedTokens));
+      }
+      if (usageTotals.outputTokens > 0) {
+        tokenTooltipParts.push(text.outputTokensLabel + " " + formatTokenCount(usageTotals.outputTokens));
+      }
+      const tokenTooltip = tokenTooltipParts.join(" · ");
+
+      return '<div class="duration-cell' + (tokenTooltip ? ' has-tooltip' : '') + '"'
+        + (tokenTooltip ? ' data-tooltip="' + escapeHtml(tokenTooltip) + '"' : '')
+        + '><span class="duration-text mono">' + escapeHtml(tokenPrimary) + '</span>'
+        + '<span class="table-subtle">' + escapeHtml(tokenMeta) + '</span>'
+        + (hasPromptTokens
+          ? '<span class="duration-track"><span class="table-token-fill" style="width:' + tokenWidth + '%">'
+            + renderTokenMeterBar({
+              totalPromptTokens: usageTotals.promptTokens,
+              newTokens: usageTotals.newTokens,
+              cachedTokens: usageTotals.cachedTokens
+            }, "token-meter-bar")
+            + '</span></span>'
+          : '')
+        + '</div>';
+    }
+
+    function renderTable(turns) {
+      if (!turns.length) {
+        elements.requestTableBody.innerHTML = '<tr><td colspan="5" style="padding:28px 20px;color:var(--muted);text-align:center;">' + escapeHtml(text.noRequestsFound) + '</td></tr>';
         return;
       }
 
-      elements.requestTableBody.innerHTML = requests.map(function (request) {
-        const selected = request.requestId === selectedRequestId ? " is-selected" : "";
-        return '<tr class="request-row' + selected + '" data-request-id="' + escapeHtml(request.requestId) + '">'
-          + '<td><div class="seq-stack"><div class="mono">' + escapeHtml(String(request.seq)) + '</div><div class="request-id-hint mono" title="' + escapeHtml(request.requestId) + '">' + escapeHtml(compactRequestId(request.requestId)) + '</div></div></td>'
-          + '<td>' + escapeHtml(text.mainAgent) + '</td>'
-          + '<td class="mono table-subtle">' + escapeHtml(request.path) + '</td>'
-          + '<td>' + renderModelChip(request.model || "--") + '</td>'
-          + '<td class="table-subtle">' + escapeHtml(request.stream ? text.streamMode : text.bufferedMode) + '</td>'
-          + '<td>' + statusBadge(request) + '</td>'
-          + '<td class="mono">' + escapeHtml(formatTokenCount(totalUsage(request))) + '</td>'
-          + '<td class="mono">' + escapeHtml(formatDuration(request.durationMs)) + '</td>'
+      const maxDuration = turns.reduce(function (maxValue, turn) {
+        return Math.max(maxValue, typeof turn.durationMs === "number" ? turn.durationMs : 0);
+      }, 0) || 1;
+      const maxPromptTokens = turns.reduce(function (maxValue, turn) {
+        const promptTokens = turn.usageTotals && typeof turn.usageTotals.promptTokens === "number"
+          ? turn.usageTotals.promptTokens
+          : 0;
+        return Math.max(maxValue, promptTokens);
+      }, 0) || 1;
+
+      elements.requestTableBody.innerHTML = turns.map(function (turn) {
+        const selected = turn.turnId === selectedTurnId ? " is-selected" : "";
+        const hasDuration = typeof turn.durationMs === "number";
+        const durationWidth = hasDuration
+          ? Math.max(6, Math.round((turn.durationMs / maxDuration) * 100))
+          : 0;
+        const durationClass = turn.state === "error"
+          ? " is-error"
+          : turn.state === "in_flight"
+            ? " is-in-flight"
+            : "";
+        const turnLabel = typeof turn.turnSeq === "number" ? "#" + turn.turnSeq : "--";
+        return '<tr class="request-row' + selected + '" data-turn-id="' + escapeHtml(turn.turnId) + '">'
+          + '<td><div class="seq-stack"><div class="mono">' + escapeHtml(turnLabel) + '</div></div></td>'
+          + '<td><div class="turn-prompt">' + escapeHtml(turn.preview || text.turnFallbackPreview) + '</div></td>'
+          + '<td>' + statusBadge(turn) + '</td>'
+          + '<td class="request-token-cell">' + renderTurnUsageCell(turn, maxPromptTokens) + '</td>'
+          + '<td><div class="duration-cell"><span class="duration-text mono">' + escapeHtml(formatDuration(turn.durationMs)) + '</span><span class="duration-track"><span class="duration-bar' + durationClass + '" style="width:' + durationWidth + '%"></span></span></div></td>'
           + '</tr>';
       }).join("");
     }
 
-    function renderNestedPromptItem(item, index) {
-      return '<details class="nested-item">'
-        + '<summary><div class="accordion-summary"><div class="accordion-title-wrap"><div class="accordion-title">'
+    function renderNestedPromptItem(item, itemId, index) {
+      const isActive = isFloatingWindowOpen("prompt:" + itemId) ? " is-active" : "";
+      return '<button class="prompt-item-card' + isActive + '" type="button" data-prompt-item="' + escapeHtml(itemId) + '">'
+        + '<div class="prompt-item-card-main"><div class="accordion-title">'
         + escapeHtml(item.title || ("Block " + (index + 1)))
-        + '</div></div></div></summary>'
-        + '<div class="nested-body">'
-        + (item.meta ? '<div class="block-meta">' + escapeHtml(item.meta) + '</div>' : '')
-        + '<div class="block-content">' + escapeHtml(item.content || "--") + '</div>'
-        + '</div>'
-        + '</details>';
+        + '</div><div class="accordion-note">' + escapeHtml(truncatePreview(item.content || "--", 80)) + '</div></div>'
+        + '<span class="prompt-item-card-mark" aria-hidden="true">+</span>'
+        + '</button>';
+    }
+
+    function promptGroupItemSignature(item) {
+      return JSON.stringify([
+        item && typeof item.title === "string" ? item.title : "",
+        item && typeof item.meta === "string" ? item.meta : "",
+        item && typeof item.content === "string" ? item.content : "",
+      ]);
+    }
+
+    function buildPromptGroupCompareMap(groups) {
+      const counts = {};
+      groups.forEach(function (group) {
+        const items = Array.isArray(group.items) ? group.items : [];
+        counts[group.kind] = {
+          compareCount: typeof group.compareCount === "number"
+          ? group.compareCount
+          : Array.isArray(group.items)
+            ? group.items.length
+            : 0,
+          itemSignatures: items.map(promptGroupItemSignature)
+        };
+      });
+      return counts;
+    }
+
+    function estimatePromptGroupChangeCount(currentItems, previousItems) {
+      const maxLength = Math.max(currentItems.length, previousItems.length);
+      let changed = 0;
+      for (let index = 0; index < maxLength; index += 1) {
+        if (currentItems[index] !== previousItems[index]) {
+          changed += 1;
+        }
+      }
+      return changed;
+    }
+
+    function isPromptGroupAppendOnlyChange(currentItems, previousItems) {
+      if (currentItems.length < previousItems.length) return false;
+      for (let index = 0; index < previousItems.length; index += 1) {
+        if (currentItems[index] !== previousItems[index]) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function renderPromptGroupDelta(group, baselineCompareMap) {
+      if (!baselineCompareMap) return "";
+      const currentCount = typeof group.compareCount === "number"
+        ? group.compareCount
+        : Array.isArray(group.items)
+          ? group.items.length
+          : 0;
+      const currentItems = Array.isArray(group.items) ? group.items.map(promptGroupItemSignature) : [];
+      const previousEntry = baselineCompareMap[group.kind] || null;
+      if (!previousEntry) {
+        if (currentCount <= 0) return "";
+        return '<span class="accordion-delta is-new">+' + escapeHtml(String(currentCount)) + " " + escapeHtml(text.deltaNew) + '</span>';
+      }
+      const previousCount = typeof previousEntry.compareCount === "number" ? previousEntry.compareCount : 0;
+      const previousItems = Array.isArray(previousEntry.itemSignatures) ? previousEntry.itemSignatures : [];
+      if (currentItems.join("\u241f") === previousItems.join("\u241f")) {
+        return '<span class="accordion-delta is-same">' + escapeHtml(text.deltaSame) + '</span>';
+      }
+      if (currentCount > previousCount && isPromptGroupAppendOnlyChange(currentItems, previousItems)) {
+        return '<span class="accordion-delta is-new">+' + escapeHtml(String(currentCount - previousCount)) + " " + escapeHtml(text.deltaNew) + '</span>';
+      }
+      const changedCount = Math.max(1, estimatePromptGroupChangeCount(currentItems, previousItems));
+      return '<span class="accordion-delta is-changed">' + escapeHtml(String(changedCount) + " " + text.deltaChanged) + '</span>';
+    }
+
+    function responseBlockMeta(block) {
+      const meta = [];
+      if (block && block.type) meta.push(String(block.type));
+      if (block && block.name) meta.push(String(block.name));
+      if (block && typeof block.text === "string" && block.text) {
+        meta.push(formatCharCount(block.text.length));
+      }
+      return meta.join(" · ");
+    }
+
+    function renderNestedAnswerItem(item, itemId, index) {
+      const isActive = isFloatingWindowOpen("answer:" + itemId) ? " is-active" : "";
+      return '<button class="prompt-item-card' + isActive + '" type="button" data-answer-item="' + escapeHtml(itemId) + '">'
+        + '<div class="prompt-item-card-main"><div class="accordion-title">'
+        + escapeHtml(item.title || ("Block " + (index + 1)))
+        + '</div><div class="accordion-note">' + escapeHtml(truncatePreview(item.content || "--", 80)) + '</div></div>'
+        + '<span class="prompt-item-card-mark" aria-hidden="true">+</span>'
+        + '</button>';
+    }
+
+    function renderToolCards(request) {
+      const toolCalls = Array.isArray(request.toolCalls) ? request.toolCalls : [];
+      return toolCalls.map(function (tool, index) {
+        const cardKey = toolPanelKey(request.requestId, index);
+        const isActive = isFloatingWindowOpen(cardKey) ? " is-active" : "";
+        return '<button class="tool-card' + isActive + '" type="button" data-tool-index="' + escapeHtml(String(index)) + '">'
+          + '<div class="tool-card-main">'
+          + '<div class="tool-card-head">'
+          + '<div class="tool-card-title">' + escapeHtml(toolActionTitle(tool)) + '</div>'
+          + '</div>'
+          + '<div class="tool-card-note">' + escapeHtml(toolActionSummary(tool)) + '</div>'
+          + '</div>'
+          + '<div class="tool-card-side">'
+          + '<span class="tool-card-badge">' + escapeHtml(toolBadgeLabel(tool)) + '</span>'
+          + '<span class="tool-card-mark" aria-hidden="true">+</span>'
+          + '</div>'
+          + '</button>';
+      }).join("");
+    }
+
+    function buildAnswerGroups(request) {
+      const groups = [];
+      const snapshot = request && request.responseSnapshot ? request.responseSnapshot : null;
+      const blocks = snapshot && Array.isArray(snapshot.blocks) ? snapshot.blocks : [];
+      const replyItems = [];
+      const thinkingItems = [];
+      const toolCalls = Array.isArray(request && request.toolCalls) ? request.toolCalls : [];
+      let replyIndex = 0;
+      let thinkingIndex = 0;
+
+      blocks.forEach(function (block) {
+        const rawText = String(block && typeof block.text === "string" ? block.text : "").trim();
+        if (block.type === "text" && rawText) {
+          replyIndex += 1;
+          replyItems.push({
+            title: text.answerItemReply + " " + replyIndex,
+            meta: responseBlockMeta(block),
+            content: rawText
+          });
+          return;
+        }
+        if ((block.type === "thinking" || block.type === "redacted_thinking") && rawText) {
+          thinkingIndex += 1;
+          thinkingItems.push({
+            title: text.answerItemThinking + " " + thinkingIndex,
+            meta: responseBlockMeta(block),
+            content: rawText
+          });
+        }
+      });
+
+      if (replyItems.length) {
+        groups.push({
+          kind: "reply",
+          title: text.answerGroupReply,
+          summary: formatCountSummary(replyItems.length, text.countMessages),
+          items: replyItems
+        });
+      }
+      if (toolCalls.length) {
+        groups.push({
+          kind: "tools",
+          title: text.answerGroupTools,
+          summary: formatCountSummary(toolCalls.length, text.countEntries),
+          tools: toolCalls
+        });
+      }
+      if (thinkingItems.length) {
+        groups.push({
+          kind: "thinking",
+          title: text.answerGroupThinking,
+          summary: formatCountSummary(thinkingItems.length, text.countMessages),
+          items: thinkingItems
+        });
+      }
+
+      return groups;
+    }
+
+    function syncPromptItemSelection() {
+      const buttons = elements.drawerPromptStructure.querySelectorAll("button[data-prompt-item]");
+      buttons.forEach(function (button) {
+        button.classList.toggle("is-active", isFloatingWindowOpen("prompt:" + button.getAttribute("data-prompt-item")));
+      });
+    }
+
+    function syncAnswerItemSelection() {
+      const buttons = elements.drawerAnswerStructure.querySelectorAll("button[data-answer-item]");
+      buttons.forEach(function (button) {
+        button.classList.toggle("is-active", isFloatingWindowOpen("answer:" + button.getAttribute("data-answer-item")));
+      });
+    }
+
+    function syncToolCardSelection() {
+      const request = currentSelectedRequest();
+      const buttons = elements.drawerAnswerStructure.querySelectorAll("button[data-tool-index]");
+      buttons.forEach(function (button) {
+        const toolIndex = button.getAttribute("data-tool-index");
+        const key = request ? toolPanelKey(request.requestId, Number(toolIndex)) : "";
+        button.classList.toggle("is-active", key ? isFloatingWindowOpen(key) : false);
+      });
     }
 
     function renderPromptStructure(request) {
+      promptItemRegistry = new Map();
+      if (!request) {
+        elements.drawerPromptStructure.innerHTML = '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
+        return;
+      }
       const snapshot = request.promptSnapshot;
       if (!snapshot) {
         elements.drawerPromptStructure.innerHTML = '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
-        elements.drawerRawPrompt.innerHTML = "";
         return;
       }
 
       const groups = buildPromptGroups(snapshot);
+      const turn = currentSelectedTurn();
+      const baselineRequest = turn && Array.isArray(turn.requests) ? turn.requests[0] || null : null;
+      const baselineGroups = baselineRequest && baselineRequest.requestId !== request.requestId && baselineRequest.promptSnapshot
+        ? buildPromptGroups(baselineRequest.promptSnapshot)
+        : null;
+      const baselineCompareMap = baselineGroups ? buildPromptGroupCompareMap(baselineGroups) : null;
       if (!groups.length) {
         elements.drawerPromptStructure.innerHTML = '<div class="insight-empty">' + escapeHtml(text.noPromptSnapshot) + '</div>';
       } else {
-        elements.drawerPromptStructure.innerHTML = groups.map(function (group) {
-          return '<details class="accordion-group">'
+        elements.drawerPromptStructure.innerHTML = groups.map(function (group, groupIndex) {
+          const deltaHtml = renderPromptGroupDelta(group, baselineCompareMap);
+          return '<details class="accordion-group group-' + escapeHtml(group.kind || "generic") + '">'
             + '<summary><div class="accordion-summary">'
             + '<div class="accordion-title-wrap">'
             + '<div class="accordion-title">' + escapeHtml(group.title) + '</div>'
             + '</div>'
+            + '<div class="accordion-summary-side">'
             + '<span class="accordion-badge">' + escapeHtml(group.summary) + '</span>'
+            + deltaHtml
+            + '</div>'
             + '</div></summary>'
             + '<div class="accordion-body"><div class="nested-list">'
-            + group.items.map(function (item, index) { return renderNestedPromptItem(item, index); }).join("")
+            + group.items.map(function (item, index) {
+              const itemId = "prompt-item-" + groupIndex + "-" + index;
+              promptItemRegistry.set(itemId, {
+                groupTitle: group.title,
+                title: item.title,
+                meta: item.meta,
+                content: item.content,
+              });
+              return renderNestedPromptItem(item, itemId, index);
+            }).join("")
             + '</div></div>'
             + '</details>';
         }).join("");
       }
 
-      elements.drawerRawPrompt.innerHTML =
-        '<details class="accordion-group">'
-        + '<summary><div class="accordion-summary">'
-        + '<div class="accordion-title-wrap">'
-        + '<div class="accordion-title">' + escapeHtml(text.rawPromptTitle) + '</div>'
-        + '<div class="accordion-note">' + escapeHtml(text.rawRequestPayloadLabel) + '</div>'
-        + '</div>'
-        + '</div></summary>'
-        + '<div class="raw-panel-body">'
-        + (snapshot.rawRequestTruncated ? '<div class="raw-note">' + escapeHtml(text.rawPromptTruncatedNotice) + '</div>' : '')
-        + '<pre class="raw-pre">' + escapeHtml(snapshot.rawRequestBody || "--") + '</pre>'
-        + '</div>'
-        + '</details>';
+      syncPromptItemSelection();
+
     }
 
-    function renderToolActivity(request) {
-      const toolCalls = Array.isArray(request.toolCalls) ? request.toolCalls : [];
-      if (!toolCalls.length) {
-        elements.drawerToolActivity.innerHTML = '<div class="tool-empty">' + escapeHtml(text.noToolActivity) + '</div>';
+    function renderAnswerStructure(request) {
+      answerItemRegistry = new Map();
+      const groups = buildAnswerGroups(request);
+      if (!groups.length) {
+        elements.drawerAnswerStructure.innerHTML = '<div class="tool-empty">' + escapeHtml(text.noAnswerSnapshot) + '</div>';
         return;
       }
 
-      elements.drawerToolActivity.innerHTML = toolCalls.map(function (tool, index) {
-        const nativeDescription = toolNativeDescription(tool);
-        const keyFields = toolKeyFields(tool);
-        const inputPayload = safeJson(tool.input);
-        const detailsHtml = keyFields.map(function (entry) {
-          return '<div class="detail-row">'
-            + '<div class="detail-row-label">' + escapeHtml(entry[0]) + '</div>'
-            + '<div class="detail-row-value">' + escapeHtml(String(entry[1])) + '</div>'
-            + '</div>';
-        }).join("");
+      elements.drawerAnswerStructure.innerHTML = groups.map(function (group, groupIndex) {
+        if (group.kind === "tools") {
+          return '<details class="accordion-group group-answer-tools">'
+            + '<summary><div class="accordion-summary">'
+            + '<div class="accordion-title-wrap"><div class="accordion-title">' + escapeHtml(group.title) + '</div></div>'
+            + '<div class="accordion-summary-side"><span class="accordion-badge">' + escapeHtml(group.summary) + '</span></div>'
+            + '</div></summary>'
+            + '<div class="accordion-body"><div class="tool-stack">'
+            + renderToolCards(request)
+            + '</div></div>'
+            + '</details>';
+        }
 
-        return '<details class="tool-item">'
+        return '<details class="accordion-group group-answer">'
           + '<summary><div class="accordion-summary">'
-          + '<div class="accordion-title-wrap">'
-          + '<div class="accordion-title">' + escapeHtml(toolActionTitle(tool)) + '</div>'
-          + '<div class="accordion-note">' + escapeHtml(toolActionSummary(tool)) + '</div>'
-          + '</div>'
-          + '<span class="accordion-badge">' + escapeHtml(tool.name || "Tool") + '</span>'
+          + '<div class="accordion-title-wrap"><div class="accordion-title">' + escapeHtml(group.title) + '</div></div>'
+          + '<div class="accordion-summary-side"><span class="accordion-badge">' + escapeHtml(group.summary) + '</span></div>'
           + '</div></summary>'
-          + '<div class="tool-body">'
-          + (nativeDescription
-            ? '<div class="detail-row"><div class="detail-row-label">' + escapeHtml(text.toolLabelDescription) + '</div><div class="detail-row-value">' + escapeHtml(nativeDescription) + '</div></div>'
-            : '')
-          + (detailsHtml ? '<div class="detail-list">' + detailsHtml + '</div>' : '')
-          + '<div class="detail-row"><div class="detail-row-label">' + escapeHtml(text.toolLabelOriginalName) + '</div><div class="detail-row-value">' + escapeHtml(tool.name || "--") + '</div></div>'
-          + '<div class="raw-panel"><details>'
-          + '<summary>' + escapeHtml(text.rawToolInputAction + " #" + (index + 1)) + '</summary>'
-          + '<div class="raw-panel-body">'
-          + '<div class="raw-note">' + escapeHtml(text.rawToolInputLabel) + '</div>'
-          + '<pre class="raw-pre">' + escapeHtml(inputPayload || "--") + '</pre>'
-          + '</div>'
-          + '</details></div>'
-          + '</div>'
+          + '<div class="accordion-body"><div class="nested-list">'
+          + group.items.map(function (item, index) {
+            const itemId = "answer-item-" + groupIndex + "-" + index;
+            answerItemRegistry.set(itemId, {
+              groupTitle: group.title,
+              title: item.title,
+              meta: item.meta,
+              content: item.content,
+            });
+            return renderNestedAnswerItem(item, itemId, index);
+          }).join("")
+          + '</div></div>'
           + '</details>';
       }).join("");
+
+      syncAnswerItemSelection();
+      syncToolCardSelection();
     }
 
     function openDrawer() {
-      const request = latestState.requests.find(function (item) { return item.requestId === selectedRequestId; });
-      if (!request) {
+      const turn = currentSelectedTurn();
+      const request = currentSelectedRequest();
+      if (!turn || !request) {
         closeDrawer(false);
         return;
       }
+      selectedTurnId = turn.turnId;
+      selectedRequestId = request.requestId;
 
-      const typeInfo = formatEventType(request.lastEventType);
-      elements.drawerRequestTitle.textContent = text.drawerTitle;
-      elements.drawerRequestId.textContent = request.requestId;
-      elements.drawerSeq.textContent = String(request.seq);
-      elements.drawerTerminal.textContent = runId;
-      elements.drawerAgent.textContent = text.mainAgent;
-      elements.drawerDuration.textContent = formatDuration(request.durationMs);
-      elements.drawerTimestamp.textContent = formatDateTime(request.startedAt);
-      elements.drawerMethod.textContent = request.method;
-      elements.drawerPath.textContent = request.path;
-      elements.drawerStatus.textContent = request.status === null ? "--" : String(request.status);
-      elements.drawerModel.innerHTML = renderModelChip(request.model || "--");
-      elements.drawerUsage.textContent = formatTokenCount(totalUsage(request));
-      elements.drawerInputTokens.textContent = formatTokenCount(request.inputTokens);
-      elements.drawerOutputTokens.textContent = formatTokenCount(request.outputTokens);
-      elements.drawerRequestBytes.textContent = formatBytes(request.requestBytes);
-      elements.drawerResponseBytes.textContent = formatBytes(request.responseBytes);
-      elements.drawerEventType.textContent = typeInfo.main;
-      elements.drawerNote.textContent = request.note || "--";
+      const turnLabel = typeof turn.turnSeq === "number" ? "#" + turn.turnSeq : "--";
+      elements.drawerRequestTitle.textContent = text.turnLabel + " " + turnLabel;
+      applyDrawerSummary(request);
+      renderTurnRail(turn);
+      elements.promptRawButton.disabled = !request.promptSnapshot;
       renderPromptStructure(request);
-      renderToolActivity(request);
+      renderAnswerStructure(request);
+      closeAllFloatingWindows();
 
       elements.drawerBackdrop.hidden = false;
-      elements.detailDrawer.hidden = false;
+      const wasRailHidden = elements.detailRailPanel.hidden;
+      elements.detailRailPanel.hidden = false;
+      elements.detailCluster.hidden = false;
       requestAnimationFrame(function () {
+        const drawerOffset = getDragOffset(elements.detailDrawer);
+        clampDragOffset(elements.detailDrawer, drawerOffset.x, drawerOffset.y);
+        if (wasRailHidden) {
+          positionDetailRailPanel();
+        } else {
+          const railOffset = getDragOffset(elements.detailRailPanel);
+          clampDragOffset(elements.detailRailPanel, railOffset.x, railOffset.y);
+        }
         elements.drawerBackdrop.classList.add("is-open");
-        elements.detailDrawer.classList.add("is-open");
+        elements.detailCluster.classList.add("is-open");
       });
     }
 
     function closeDrawer(clearSelection) {
       if (clearSelection !== false) {
+        selectedTurnId = null;
         selectedRequestId = null;
       }
+      closeAllFloatingWindows();
       elements.drawerBackdrop.classList.remove("is-open");
-      elements.detailDrawer.classList.remove("is-open");
+      elements.detailCluster.classList.remove("is-open");
       setTimeout(function () {
-        if (!elements.detailDrawer.classList.contains("is-open")) {
+        if (!elements.detailCluster.classList.contains("is-open")) {
           elements.drawerBackdrop.hidden = true;
-          elements.detailDrawer.hidden = true;
+          elements.detailCluster.hidden = true;
+          elements.detailRailPanel.hidden = true;
         }
       }, 220);
-      if (latestState.requests.length) {
-        renderTable(applyFilters(latestState.requests));
+      if (latestState.turns.length) {
+        renderTable(applyFilters(latestState.turns));
       }
     }
 
@@ -3208,7 +6723,7 @@ export function buildProxyTraceDashboardHtml(
     function switchView(viewId) {
       currentView = viewId === "details" ? "details" : "overview";
       setActiveNav(currentView);
-      if (!latestState.requests.length) return;
+      if (!latestState.turns.length) return;
       elements.overviewState.classList.toggle("is-visible", currentView === "overview");
       elements.detailsState.classList.toggle("is-visible", currentView === "details");
     }
@@ -3228,7 +6743,7 @@ export function buildProxyTraceDashboardHtml(
       elements.emptyTitle.textContent = text.emptyTitle;
       elements.emptyBody.textContent = text.emptyBody;
 
-      if (!latestState.requests.length) {
+      if (!latestState.turns.length) {
         elements.emptyState.classList.add("is-visible");
         elements.overviewState.classList.remove("is-visible");
         elements.detailsState.classList.remove("is-visible");
@@ -3239,10 +6754,10 @@ export function buildProxyTraceDashboardHtml(
       elements.emptyState.classList.remove("is-visible");
       renderCards(latestState.stats);
       renderTimeline(latestState.requests);
-      renderTable(applyFilters(latestState.requests));
+      renderTable(applyFilters(latestState.turns));
       switchView(currentView);
 
-      if (selectedRequestId) {
+      if (selectedTurnId) {
         openDrawer();
       }
     }
@@ -3272,6 +6787,7 @@ export function buildProxyTraceDashboardHtml(
           latestState = {
             events: payload.events,
             requests: requests,
+            turns: summarizeTurns(requests),
             stats: buildStats(requests, payload.events),
             generatedAt: payload.generatedAt
           };
@@ -3281,7 +6797,7 @@ export function buildProxyTraceDashboardHtml(
         }
       } catch (error) {
         isOffline = true;
-        if (latestState.requests.length) {
+        if (latestState.turns.length) {
           renderHeader(latestState.stats);
           elements.footerRefresh.textContent = text.refreshTime + ": " + formatDateTime(lastSuccessfulRefreshAt) + " · " + text.offlineSnapshot;
           return;
@@ -3294,6 +6810,7 @@ export function buildProxyTraceDashboardHtml(
           latestState = {
             events: cached.events,
             requests: requests,
+            turns: summarizeTurns(requests),
             stats: buildStats(requests, cached.events),
             generatedAt: cached.generatedAt || null
           };
@@ -3315,9 +6832,18 @@ export function buildProxyTraceDashboardHtml(
       void refresh();
     });
 
+    elements.settingsButton.addEventListener("click", function () {
+      void openSettingsPanel();
+    });
+
+    elements.navSettingsButton.addEventListener("click", function (event) {
+      event.preventDefault();
+      void openSettingsPanel();
+    });
+
     elements.searchInput.addEventListener("input", function (event) {
       searchTerm = event.target.value || "";
-      renderTable(applyFilters(latestState.requests));
+      renderTable(applyFilters(latestState.turns));
     });
 
     elements.filterButtons.forEach(function (button) {
@@ -3326,32 +6852,157 @@ export function buildProxyTraceDashboardHtml(
         elements.filterButtons.forEach(function (item) {
           item.classList.toggle("active", (item.dataset.filter || "") === activeFilter);
         });
-        renderTable(applyFilters(latestState.requests));
+        renderTable(applyFilters(latestState.turns));
       });
     });
 
     elements.requestTableBody.addEventListener("click", function (event) {
-      const row = event.target.closest("tr[data-request-id]");
+      const row = event.target.closest("tr[data-turn-id]");
       if (!row) return;
-      selectedRequestId = row.getAttribute("data-request-id");
-      renderTable(applyFilters(latestState.requests));
+      selectedTurnId = row.getAttribute("data-turn-id");
+      const turn = currentSelectedTurn();
+      selectedRequestId = turn && turn.latestRequestId ? turn.latestRequestId : null;
+      renderTable(applyFilters(latestState.turns));
       openDrawer();
     });
 
     elements.timelineBars.addEventListener("click", function (event) {
       const bar = event.target.closest("button[data-request-id]");
       if (!bar) return;
-      selectedRequestId = bar.getAttribute("data-request-id");
-      renderTable(applyFilters(latestState.requests));
+      const requestId = bar.getAttribute("data-request-id");
+      const request = latestState.requests.find(function (item) { return item.requestId === requestId; }) || null;
+      if (request && request.requestKind === "probe") return;
+      selectedRequestId = requestId;
+      const turn = latestState.turns.find(function (item) {
+        return item.requests.some(function (requestItem) { return requestItem.requestId === selectedRequestId; });
+      }) || null;
+      selectedTurnId = turn ? turn.turnId : null;
+      renderTable(applyFilters(latestState.turns));
       openDrawer();
+    });
+
+    elements.drawerTurnRail.addEventListener("click", function (event) {
+      const button = event.target.closest("button[data-request-id]");
+      if (!button) return;
+      selectedRequestId = button.getAttribute("data-request-id");
+      openDrawer();
+    });
+
+    elements.drawerPromptStructure.addEventListener("click", function (event) {
+      const button = event.target.closest("button[data-prompt-item]");
+      if (!button) return;
+      openPromptItemPanel(button.getAttribute("data-prompt-item"));
+    });
+
+    elements.drawerAnswerStructure.addEventListener("click", function (event) {
+      const answerButton = event.target.closest("button[data-answer-item]");
+      if (answerButton) {
+        openAnswerItemPanel(answerButton.getAttribute("data-answer-item"));
+        return;
+      }
+      const button = event.target.closest("button[data-tool-index]");
+      if (!button) return;
+      openToolPanel(Number(button.getAttribute("data-tool-index")));
     });
 
     elements.drawerClose.addEventListener("click", function () {
       closeDrawer();
     });
 
+    elements.promptItemPanelClose.addEventListener("click", function () {
+      closePromptItemPanel();
+    });
+
+    elements.promptItemPanelCopy.addEventListener("click", async function () {
+      if (!promptPanelCopyText) return;
+      try {
+        await navigator.clipboard.writeText(promptPanelCopyText);
+        if (promptPanelCopyResetTimer) {
+          clearTimeout(promptPanelCopyResetTimer);
+        }
+        setCopyButtonState(elements.promptItemPanelCopy, true);
+        promptPanelCopyResetTimer = setTimeout(function () {
+          setCopyButtonState(elements.promptItemPanelCopy, false);
+          promptPanelCopyResetTimer = null;
+        }, 1200);
+      } catch {
+        setCopyButtonState(elements.promptItemPanelCopy, false);
+      }
+    });
+
     elements.drawerBackdrop.addEventListener("click", function () {
       closeDrawer();
+    });
+
+    elements.drawerMetadataButton.addEventListener("click", function () {
+      openDrawerOverlay("metadata");
+    });
+
+    elements.drawerTransportButton.addEventListener("click", function () {
+      openDrawerOverlay("transport");
+    });
+
+    elements.promptRawButton.addEventListener("click", function () {
+      openRawInfoPanel();
+    });
+
+    elements.drawerOverlayClose.addEventListener("click", function () {
+      closeDrawerOverlay();
+    });
+
+    elements.drawerOverlayBackdrop.addEventListener("click", function () {
+      closeDrawerOverlay();
+    });
+
+    elements.drawerOverlayCopy.addEventListener("click", async function () {
+      if (!overlayCopyText) return;
+      try {
+        await navigator.clipboard.writeText(overlayCopyText);
+        if (overlayCopyResetTimer) {
+          clearTimeout(overlayCopyResetTimer);
+        }
+        setCopyButtonState(elements.drawerOverlayCopy, true);
+        overlayCopyResetTimer = setTimeout(function () {
+          setCopyButtonState(elements.drawerOverlayCopy, false);
+          overlayCopyResetTimer = null;
+        }, 1200);
+      } catch {
+        setCopyButtonState(elements.drawerOverlayCopy, false);
+      }
+    });
+
+    elements.floatingWindowHost.addEventListener("click", function (event) {
+      const saveButton = event.target.closest("[data-settings-save]");
+      if (!saveButton) return;
+      void saveSettingsFromPanel(saveButton);
+    });
+
+    bindFloatingDrag(elements.detailDrawer.querySelector(".drawer-head"), elements.detailDrawer);
+    bindFloatingDrag(elements.detailRailPanel.querySelector(".detail-rail-label"), elements.detailRailPanel);
+
+    window.addEventListener("resize", function () {
+      if (!elements.detailCluster.hidden) {
+        const drawerOffset = getDragOffset(elements.detailDrawer);
+        clampDragOffset(elements.detailDrawer, drawerOffset.x, drawerOffset.y);
+      }
+      if (!elements.detailRailPanel.hidden) {
+        const railOffset = getDragOffset(elements.detailRailPanel);
+        clampDragOffset(elements.detailRailPanel, railOffset.x, railOffset.y);
+      }
+      floatingWindows.forEach(function (entry) {
+        const offset = getDragOffset(entry.element);
+        clampDragOffset(entry.element, offset.x, offset.y);
+      });
+    });
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
+      if (closeTopFloatingWindow()) {
+        return;
+      }
+      if (!elements.detailCluster.hidden) {
+        closeDrawer();
+      }
     });
 
     bindNav();
@@ -3382,6 +7033,7 @@ export function buildProxyTraceDashboardHtml(
       latestState = {
         events: cached.events,
         requests: requests,
+        turns: summarizeTurns(requests),
         stats: buildStats(requests, cached.events),
         generatedAt: cached.generatedAt || null
       };

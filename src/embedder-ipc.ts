@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 
 import { SOCKETS_DIR } from "./config.js";
@@ -5,6 +6,8 @@ import { SOCKETS_DIR } from "./config.js";
 export const EMBEDDER_DAEMON_SOCKET_PREFIX = "embedder";
 export const EMBEDDER_DAEMON_DEFAULT_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 export const EMBEDDER_DAEMON_DEFAULT_IDLE_CHECK_MS = 30 * 1000;
+const WINDOWS_PIPE_PREFIX = "\\\\.\\pipe\\";
+const MAX_RUN_ID_SEGMENT_LENGTH = 24;
 
 export type EmbedderRequestType = "query" | "memory" | "ping";
 
@@ -35,11 +38,27 @@ export function sanitizePathComponent(value: string): string {
   return normalized.length > 0 ? normalized.slice(0, 120) : "default";
 }
 
+function hashRunId(runId: string): string {
+  return createHash("sha1").update(runId).digest("hex").slice(0, 10);
+}
+
+function buildEmbedderDaemonEndpointName(runId: string): string {
+  const safeRunId = sanitizePathComponent(runId);
+  const runIdSegment = safeRunId.slice(0, MAX_RUN_ID_SEGMENT_LENGTH) || "default";
+  return `${EMBEDDER_DAEMON_SOCKET_PREFIX}-${runIdSegment}-${hashRunId(safeRunId)}`;
+}
+
 export function getEmbedderDaemonSocketPath(runId: string): string {
-  return join(
-    SOCKETS_DIR,
-    `${EMBEDDER_DAEMON_SOCKET_PREFIX}-${sanitizePathComponent(runId)}.sock`,
-  );
+  const endpointName = buildEmbedderDaemonEndpointName(runId);
+  if (process.platform === "win32") {
+    return `${WINDOWS_PIPE_PREFIX}melu-${endpointName}`;
+  }
+
+  return join(SOCKETS_DIR, `${endpointName}.sock`);
+}
+
+export function isWindowsNamedPipePath(value: string): boolean {
+  return /^\\\\(?:\.|\?)\\pipe\\/i.test(value);
 }
 
 export function isEmbedderRequestType(value: unknown): value is EmbedderRequestType {
